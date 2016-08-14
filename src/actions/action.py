@@ -6,7 +6,7 @@ class Action:
     Defines an action (how will a message be replied)
     """
 
-    def __init__(self, name, keywords, action=None, multiple_answers=[], admin=False):
+    def __init__(self, name, keywords, action=None, multiple_answers=[], requires_admin=False):
         """
         Initializes this action
         :param name: The name of the action
@@ -18,6 +18,8 @@ class Action:
 
         :param multiple_answers: Returns one of the given multiple answers. This is mutually
                                  exclusive with action
+
+        :param admin: Determines whether the command is an admin-only command
         """
         self.name = name
 
@@ -25,23 +27,30 @@ class Action:
         self.keywords = []
         for keyword in keywords:
             self.keywords.append(re.compile(r'\b{}\b'.format(keyword), re.IGNORECASE))
+
         self.action = action
         self.multiple_answers = multiple_answers
+        self.requires_admin = requires_admin
 
-    def should_trigger(self, msg):
+
+    def should_trigger(self, user, msg):
         """
         Should the action trigger with the given message?
 
         :param msg: The message that will be checked
-        :return: Returns True if the action should be triggered
+        :return: Returns the match which was triggered if it should trigger, None otherwise
         """
+        if self.requires_admin and not user.is_admin:
+            return None
+
         for keyword in self.keywords:
-            if keyword.search(msg):  # If the regex search is not None, triggered!
-                return True
+            match = keyword.search(msg)
+            if match is not None:  # If we found a match, return it
+                return match
 
-        return False
+        return None
 
-    def act(self, user, msg):
+    def act(self, user, msg, match):
         """
         Acts for the given user with the specified action.
 
@@ -50,7 +59,7 @@ class Action:
         :return: An iterable
         """
         if self.action is not None:
-            for a in self.action(user, msg):
+            for a in self.action(user, msg, match):
                 yield a  # TODO avoid iterating twice, maybe return a set
             return
 

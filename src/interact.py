@@ -30,9 +30,10 @@ def interact(user, msg):
     """
 
     for action in actions:
-        if action.should_trigger(msg):
+        match = action.should_trigger(user, msg)
+        if match:  # If it should trigger (i.e. match is not None), act
             # Act will always return an iterable, convert it to a set
-            return {a for a in action.act(user, msg)}
+            return {a for a in action.act(user, msg, match)}
 
     if msg[-1] == '?':
         return {choice(question_answers)}

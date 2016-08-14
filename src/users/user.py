@@ -7,6 +7,8 @@ class User:
         self.name = user['first_name']
         self.username = user['username']
 
+        self.is_admin = self.id == 10885151  # @Lonami
+
 
     def save(self):
         with open('entry.pickle', 'wb') as f:
