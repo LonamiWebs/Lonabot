@@ -50,24 +50,26 @@ class Action:
 
             self.action = default_action
 
-    def act(self, bot, chat, user, text):
+    def act(self, bot, msg, should_reply):
         """
         Acts if it should act with the given text. Otherwise, does nothing
 
         :param bot: The bot that will be used for the interaction
-        :param chat: The chat where the reply will be sent back
-        :param user: Who sent this message?
-        :param text: The text message that the user sent
+        :param msg: The sent message, with text, sender and where it belongs (which chat)
+        :param should_reply: Hint that indicates whether the answer should reply to the original
+                             message or not. This is useful when there are many messages between
+                             the bot's answer and the original message
+
         :return: True if we acted; False otherwise
         """
 
-        if self.requires_admin and not user.is_admin:
+        if self.requires_admin and not msg.sender.is_admin:
             return False  # Early terminate, we won't act
 
         # See if we can match the sent text with any of this action's keywords
         match = None
         for keyword in self.keywords:
-            match = keyword.search(text)
+            match = keyword.search(msg.text)
             if match:
                 break  # Found a match, stop looking in the keywords
 
@@ -75,6 +77,6 @@ class Action:
             return False  # No match found, don't act
 
         # Set the action data
-        data = ActionData(bot, chat, user, text, match)
+        data = ActionData(bot, msg, match, should_reply)
         self.action(data)  # Fire the action
         return True

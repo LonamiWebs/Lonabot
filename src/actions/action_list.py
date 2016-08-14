@@ -152,11 +152,11 @@ actions = [
 
     Action('HELLO',
            keywords=['hey+', 'hello+', 'hi+'],
-           multiple_answers=['hey :D', 'hello', 'heyy', 'hi', 'welcome back']),
+           multiple_answers=['hey :D', 'hello', 'heyy', 'hi', 'hey there', 'welcome back']),
 
     Action('BYE',
            keywords=['bye', 'gtg', 'g2g', 'bye', 'cya', "i'm going", "i'm gonna", 'leaving'],
-           multiple_answers=["don't go :(", 'bye', 'speak after!', 'cyaa', 'FINALLY LEAVING!!']),
+           multiple_answers=["don't go :(", 'bye', 'speak after!', 'cyaa', 'goodbye', 'bye bye!']),
 
     # endregion
 
@@ -260,6 +260,11 @@ actions = [
     Action('GET USERS',
            keywords=['get users?'],
            action=get_users,
+           requires_admin=True),
+
+    Action('SHUT DOWN',
+           keywords=['shut( you)? (off|down)'],
+           multiple_answers=['okay, byee', 'okay master :)', 'cya soon everyone'],
            requires_admin=True),
 
     # endregion

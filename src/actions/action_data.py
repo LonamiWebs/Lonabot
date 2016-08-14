@@ -4,27 +4,30 @@ class ActionData:
     Class describing all of the required data for an action to take place.
     """
 
-    def __init__(self, bot, chat, sender, original_msg, match):
+    def __init__(self, bot, original_msg, match, should_reply):
         """
         :param bot: The bot to which we should act with this data
-        :param chat: The chat to which we should act with this data
-        :param sender: The original message sender
-        :param original_msg: The original message text
+        :param original_msg: The original message (with sender, text, etc.)
         :param match: The found match when looking for keywords in an action
+        :param should_reply: Hint that indicates whether this message should be a reply or not
         """
         self.bot = bot
-        self.chat = chat
-        self.sender = sender
-        self.original_msg = original_msg
+        self.ori_msg = original_msg
         self.match = match
+        self.should_reply = should_reply
 
-    def send_msg(self, text):
+    def send_msg(self, text, reply=False):
         """
         Shortcut function to send a message by using the bot provided in the action
         :param text: The text to be sent
+        :param reply: Determines whether we're replying to the original message or not
         """
 
-        self.bot.send_message(self.chat, text)
+        if reply or self.should_reply:
+            self.bot.send_message(self.ori_msg.chat, text, self.ori_msg.id)
+        else:
+            self.bot.send_message(self.ori_msg.chat, text)
+
         print('Replied to @{} ({}): «{}» → «{}»'
-              .format(self.sender.username, self.sender.id,
-                      self.original_msg, text))
+              .format(self.ori_msg.sender.username, self.ori_msg.sender.id,
+                      self.ori_msg.text, text))
