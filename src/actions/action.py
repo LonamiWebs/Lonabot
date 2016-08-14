@@ -1,70 +1,80 @@
-from random import choice
-import re
+import random, re
+from actions.action_data import ActionData
+
 
 class Action:
     """
-    Defines an action (how will a message be replied)
+    Defines an action (how the given bot will act to a message)
     """
 
-    def __init__(self, name, keywords, action=None, multiple_answers=[], requires_admin=False):
+    global bot
+
+    def __init__(self, name, keywords, action=None, multiple_answers=[],
+                 add_keyword_bounding=True, requires_admin=False):
         """
         Initializes this action
         :param name: The name of the action
 
         :param keywords: Which keywords trigger this action? They should be a valid regex
 
-        :param action: The action to be triggered. This *must* return an enumerator (use yield)
-                       If no action is provided, multiple_answers will be used
+        :param action: The action to be triggered. If None, multiple_answers will be used
 
         :param multiple_answers: Returns one of the given multiple answers. This is mutually
                                  exclusive with action
 
-        :param admin: Determines whether the command is an admin-only command
+        :param add_keyword_bounding: Should word bounding be added to the keywords?
+
+        :param requires_admin: Determines whether the command is an admin-only command
         """
         self.name = name
-
-        # For each keyword, add word bounding (\b) and pre-compile the regex
-        self.keywords = []
-        for keyword in keywords:
-            self.keywords.append(re.compile(r'\b{}\b'.format(keyword), re.IGNORECASE))
-
-        self.action = action
-        self.multiple_answers = multiple_answers
         self.requires_admin = requires_admin
 
-
-    def should_trigger(self, user, msg):
-        """
-        Should the action trigger with the given message?
-
-        :param msg: The message that will be checked
-        :return: Returns the match which was triggered if it should trigger, None otherwise
-        """
-        if self.requires_admin and not user.is_admin:
-            return None
-
-        for keyword in self.keywords:
-            match = keyword.search(msg)
-            if match is not None:  # If we found a match, return it
-                return match
-
-        return None
-
-    def act(self, user, msg, match):
-        """
-        Acts for the given user with the specified action.
-
-        :param user: The user for who the action will be performed
-        :param msg: The message that the user sent
-        :return: An iterable
-        """
-        if self.action is not None:
-            for a in self.action(user, msg, match):
-                yield a  # TODO avoid iterating twice, maybe return a set
-            return
-
+        # For each keyword, pre-compile the regex and optionally add word bounding
+        self.keywords = []
+        if add_keyword_bounding:
+            for keyword in keywords:
+                self.keywords.append(re.compile(r'\b{}\b'.format(keyword), re.IGNORECASE))
         else:
-            yield choice(self.multiple_answers)
-            return
+            for keyword in keywords:
+                self.keywords.append(re.compile(keyword, re.IGNORECASE))
 
-        return []
+        # Set the action
+        if action is not None:
+            self.action = action  # If an action was provided, set it
+
+        else:  # Else define a default action which replies with a random answer
+            self.multiple_answers = multiple_answers
+
+            def default_action(data):
+                data.send_msg(random.choice(self.multiple_answers))
+
+            self.action = default_action
+
+    def act(self, bot, chat, user, text):
+        """
+        Acts if it should act with the given text. Otherwise, does nothing
+
+        :param bot: The bot that will be used for the interaction
+        :param chat: The chat where the reply will be sent back
+        :param user: Who sent this message?
+        :param text: The text message that the user sent
+        :return: True if we acted; False otherwise
+        """
+
+        if self.requires_admin and not user.is_admin:
+            return False  # Early terminate, we won't act
+
+        # See if we can match the sent text with any of this action's keywords
+        match = None
+        for keyword in self.keywords:
+            match = keyword.search(text)
+            if match:
+                break  # Found a match, stop looking in the keywords
+
+        if not match:
+            return False  # No match found, don't act
+
+        # Set the action data
+        data = ActionData(bot, chat, user, text, match)
+        self.action(data)  # Fire the action
+        return True

@@ -1,9 +1,15 @@
 import requests, json
-from interact import interact
+from actions.action_list import actions
+from users.user_database import UserDatabase
+
 from users.user import User
+from chats.chat import Chat
 
 
 class Bot:
+    """
+    Represents a Telegram bot
+    """
 
     def __init__(self, token):
         """
@@ -12,6 +18,7 @@ class Bot:
         """
         self.token = token
         self.latest_update_id = 0  # So we can use it as an offset later
+        self.user_db = UserDatabase()
 
     def __getattr__(self, method_name):
         """
@@ -24,7 +31,7 @@ class Bot:
                  to check whether the request was OK
         """
         def request(parameters={}, timeout=5):
-            url = 'https://api.telegram.org/bot' + self.token + '/' + method_name
+            url = 'https://api.telegram.org/bot{}/{}'.format(self.token, method_name)
 
             try:
                 return requests.get(url, json=parameters, timeout=timeout).json()
@@ -59,30 +66,45 @@ class Bot:
 
         :param update: Dictionary containing all the update information
         """
+        if 'message' in update and 'text' in update['message']:
 
-        if ('message' in update and
-                    'text' in update['message']):
+            # Retrieve some information from the update
+            chat = Chat(update['message']['chat'])
+            user = User(update['message']['from'])
+            text = update['message']['text']
 
-            reply = {}
-            reply['chat_id'] = update['message']['chat']['id']
+            # Check the user in our database
+            self.user_db.check_user(user)
 
-            reply_to = User(update['message']['from'])
-            for answer in interact(reply_to, update['message']['text']):
-                reply['text'] = answer
-                self.sendMessage(reply)
-                print('Replying to @{} ({}): «{}» → «{}»'.format(
-                    reply_to.username, reply_to.id,
-                    update['message']['text'], answer))
+            # Check whether we should act
+            for action in actions:
+                if action.act(self, chat, user, text):
+                    break  # If we've acted, stop looking for interaction
+
+    def send_message(self, chat, text):
+        """
+        Sends a message
+        :param chat: The chat to where the message will be sent
+        :param text: The text to be sent
+        """
+        self.sendMessage({
+            'chat_id': chat.id,
+            'text': text,
+            'parse_mode': 'markdown'}
+        )
 
     def run(self):
         """
         Runs the bot forever until it's stopped.
         Running the bot means it will continuously check for updates.
         """
-        print('The bot is now running.')
+        print('The bot is now running. Press Ctrl+C to exit.')
         self.running = True
-        while (self.running):
-            self.check_updates()
+        try:
+            while (self.running):
+                self.check_updates()
+        except KeyboardInterrupt:
+            print('Exiting...')
 
     def stop(self):
         """
