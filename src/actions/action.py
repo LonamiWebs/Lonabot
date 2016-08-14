@@ -1,16 +1,17 @@
 from random import choice
+import re
 
 class Action:
     """
     Defines an action (how will a message be replied)
     """
 
-    def __init__(self, name, keywords, action=None, multiple_answers=[]):
+    def __init__(self, name, keywords, action=None, multiple_answers=[], admin=False):
         """
         Initializes this action
         :param name: The name of the action
 
-        :param keywords: Which keywords trigger this action?
+        :param keywords: Which keywords trigger this action? They should be a valid regex
 
         :param action: The action to be triggered. This *must* return an enumerator (use yield)
                        If no action is provided, multiple_answers will be used
@@ -19,7 +20,11 @@ class Action:
                                  exclusive with action
         """
         self.name = name
-        self.keywords = keywords
+
+        # For each keyword, add word bounding (\b) and pre-compile the regex
+        self.keywords = []
+        for keyword in keywords:
+            self.keywords.append(re.compile(r'\b{}\b'.format(keyword), re.IGNORECASE))
         self.action = action
         self.multiple_answers = multiple_answers
 
@@ -31,7 +36,7 @@ class Action:
         :return: Returns True if the action should be triggered
         """
         for keyword in self.keywords:
-            if keyword in msg:
+            if keyword.search(msg):  # If the regex search is not None, triggered!
                 return True
 
         return False

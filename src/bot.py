@@ -41,7 +41,7 @@ class Bot:
         """
         params = {}
         params['offset'] = self.latest_update_id + 1  # Add +1 to avoid getting the previous update
-        params['timeout'] = 60  # Arbitrarily large timeout for long polling
+        params['timeout'] = 300  # Arbitrarily large timeout for long polling
 
         result = self.getUpdates(params, params['timeout'])
 
@@ -66,9 +66,13 @@ class Bot:
             reply = {}
             reply['chat_id'] = update['message']['chat']['id']
 
-            for answer in interact(User(update['message']['from']), update['message']['text']):
+            reply_to = User(update['message']['from'])
+            for answer in interact(reply_to, update['message']['text']):
                 reply['text'] = answer
                 self.sendMessage(reply)
+                print('Replying to @{} ({}): «{}» → «{}»'.format(
+                    reply_to.username, reply_to.id,
+                    update['message']['text'], answer))
 
     def run(self):
         """

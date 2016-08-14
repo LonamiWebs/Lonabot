@@ -10,7 +10,7 @@ question_answers = [
     # Negative
     'no', 'nah', 'nope', 'not quite',
     'HAHAHA no.', 'lol no', 'sadly no :(', 'in your dreams 😎',
-    'not today', 'never', 'mayb... no', 'Negative.'
+    'not today', 'never', 'mayb... no', 'Negative.',
 
     # Unsure
     'well it depends :/', 'idno', 'maybe 😏', 'perhaps',
