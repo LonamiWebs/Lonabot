@@ -1,4 +1,7 @@
 
+from number_helper import NumberHelper
+
+
 class ActionData:
     """
     Class describing all of the required data for an action to take place.
@@ -31,3 +34,10 @@ class ActionData:
         print('Replied to @{} ({}): «{}» → «{}»'
               .format(self.ori_msg.sender.username, self.ori_msg.sender.id,
                       self.ori_msg.text, text))
+
+    def get_matched_int(self, index, fallback=1):
+        integer = self.match.group(index)
+        if integer is None:
+            return fallback
+        else:
+            return NumberHelper.get_int(self.match.group(index))

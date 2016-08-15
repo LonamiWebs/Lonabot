@@ -7,15 +7,18 @@ class Action:
     Defines an action (how the given bot will act to a message)
     """
 
-    global bot
-
     def __init__(self, name, keywords, action=None, multiple_answers=[],
-                 add_keyword_bounding=True, requires_admin=False):
+                 add_keyword_bounding=True, replace_spaces_nonprintable=True,
+                 requires_admin=False):
         """
         Initializes this action
         :param name: The name of the action
 
-        :param keywords: Which keywords trigger this action? They should be a valid regex
+        :param keywords: Which keywords trigger this action? They should be a valid regex.
+
+                         «INT» (without quotes) will be replaced for a regex to match
+                         an integer (or an integer literal), which can then be retrieved
+                         with data.get_matched_int(index)
 
         :param action: The action to be triggered. If None, multiple_answers will be used
 
@@ -24,19 +27,25 @@ class Action:
 
         :param add_keyword_bounding: Should word bounding be added to the keywords?
 
+        :param replace_spaces_nonprintable: Should spaces be replaced with \s+ (one or more spaces)?
+
         :param requires_admin: Determines whether the command is an admin-only command
         """
         self.name = name
         self.requires_admin = requires_admin
 
-        # For each keyword, pre-compile the regex and optionally add word bounding
+        # For each keyword, pre-compile the regex and optionally enhance it
         self.keywords = []
-        if add_keyword_bounding:
-            for keyword in keywords:
-                self.keywords.append(re.compile(r'\b{}\b'.format(keyword), re.IGNORECASE))
-        else:
-            for keyword in keywords:
-                self.keywords.append(re.compile(keyword, re.IGNORECASE))
+        for keyword in keywords:
+            # Enhance the keyword
+            if add_keyword_bounding:
+                keyword = r'\b{}\b'.format(keyword)
+            if replace_spaces_nonprintable:
+                keyword = keyword.replace(' ', r'\s+')
+
+            keyword = keyword.replace('INT', '(\d+|[\w\s-]+)')
+
+            self.keywords.append(re.compile(keyword, re.IGNORECASE))
 
         # Set the action
         if action is not None:

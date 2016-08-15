@@ -80,6 +80,12 @@ def choose(data):
     data.send_msg(choice(choices))
 
 
+def what_can_bot_do(data):
+    data.send_msg('with the right keywords, i can do many things:')
+    data.send_msg(', '.join(action.name.lower()
+                            for action in actions if not action.requires_admin))
+
+
 # endregion
 
 # region Utils
@@ -103,18 +109,68 @@ def who_is(data):
 
 def roll_dice(data):
     answers = ['rolling... {}!', "roll roll {}", '{}', '{} came', '{} came now']
-    times = data.match.group(1)
-    if times is not None:
-        times = int(times)
-    else:
-        times = 1
+    times = data.get_matched_int(1, fallback=1)
 
     # Roll a dice n given times
-    if times > 10:
-        data.send_msg("i can't be bothered rolling it so many times")
-    else:
+    if times > 100:
+        data.send_msg("{} are too many times, i'll do 100 though".format(times))
+        times = 100
+
+    if times == 1:  # Special message
+        data.send_msg(choice(answers).format(randint(1, 6)))
+
+    else:  # Else format it differently
+        results = {}
+        for i in range(1, 7):
+            results[i] = 0  # Initialize 1..6 to 0
+
         for _ in range(times):
-            data.send_msg(choice(answers).format(randint(1, 6)))
+            rolled = randint(1, 6)
+            results[rolled] += 1  # Count how many times a number came
+
+        msg = ''
+        for number, count in results.items():
+            if count == 1:
+                msg += "{} came once\n".format(number)
+            elif count == 2:
+                msg += "{} came twice\n".format(number)
+            elif count != 0:  # Ignore 0 times case
+                msg += "{} came {} times\n".format(number, count)
+
+        print(results)
+        data.send_msg(msg.rstrip())
+
+
+
+def pick_card(data):
+
+    times = data.get_matched_int(1, fallback=1)
+    if times > 10:  # Avoid too many
+        data.send_msg("{} are too many, i'll do 10 ok?".format(times))
+        times = 10
+
+    # Add unique choices until we have enough
+    result = set()
+    while len(result) < times:
+        # Pick a random value
+        value = randint(2, 14)
+        if value == 11:
+            value = 'jack'
+        elif value == 12:
+            value = 'queen'
+        elif value == 13:
+            value = 'king'
+        elif value == 14:
+            value = 'ace'
+
+        # Add the random value with the choice
+        result.add('{} {}'.format(choice(['♠️', '♣️', '♥️', '♦️']), value))
+
+    data.send_msg('\n'.join(result))
+
+
+def to_int(data):
+    data.send_msg(data.get_matched_int(1))
 
 
 # endregion
@@ -130,6 +186,20 @@ def get_users(data):
 # endregion
 
 actions = [
+
+    # region Admin
+
+    Action('GET USERS',
+           keywords=['get users?'],
+           action=get_users,
+           requires_admin=True),
+
+    Action('SHUT DOWN',
+           keywords=['shut( you)? (off|down)'],
+           multiple_answers=['okay, byee', 'okay master :)', 'cya soon everyone'],
+           requires_admin=True),
+
+    # endregion
 
     # region Hostile
 
@@ -195,28 +265,36 @@ actions = [
 
     # region Questions
 
-    Action('HOW MANY?',
+    Action('ANSWER «HOW MANY?» QUESTIONS',
            keywords=['how (many|much)'],
            action=how_many),
 
-    Action('HOW LONG?',
+    Action('ANSWER «HOW LONG?» QUESTIONS',
            keywords=['how long'],
            action=how_long),
 
-    Action('HOW OLD?',
+    Action('ANSWER «HOW OLD?» QUESTIONS',
            keywords=['how old'],
            action=how_old),
 
-    Action('WHY?',
+    Action('ANSWER «WHY?» QUESTIONS',
            keywords=['why+'],
            multiple_answers=['cus i said so', "there's no real reason", 'you tell me',
                              'im da boss', "because it's sunny", "coz i'm cool"]),
 
-    Action('CHOOSE',
-           keywords=['(\w+?)(?:,\s*(\w+?))* or (\w+?)',  # strings
-                     '(\d+?)(?:,\s*(\d+?))* or (\d+?)'  # numbers
+    Action('CHOOSE «X» OR «Y»',
+           keywords=['(\w+?)(?:,\s*(\w+?))* or (\w+?)',  # Strings
+                     '(\d+?)(?:,\s*(\d+?))* or (\d+?)'  # Numbers
                     ],
            action=choose),
+
+    Action('ANSWER «WHAT CAN YOU DO?» QUESTIONS',
+           keywords=['what (can|do) (you|it) do'],
+           action=what_can_bot_do),
+
+    Action('ANSWER «WHO IS?» QUESTIONS',
+           keywords=['who (?:am|is) (i|me|@[a-zA-Z0-9_]+)'],
+           action=who_is),
 
     # endregion
 
@@ -231,7 +309,7 @@ actions = [
 
     # region Environment
 
-    Action('SOMEONE ANNOYED',
+    Action('DETECT SOMEONE ANNOYED',
            keywords=[r'^\.\.\.+$'],
            multiple_answers=['someone is annoyed...', 'you ok?', "i think you are annoyed"],
            add_keyword_bounding=False
@@ -246,32 +324,22 @@ actions = [
            action=love),
 
     Action('ROLL A DICE',
-           keywords=[r'roll (?:a )?dice(?: (\d+) times?)?'],
+           keywords=[r'roll (?:a )?dice(?: INT(?: times?)?)?'],
            action=roll_dice),
 
-    Action('WHO IS',
-           keywords=['who (?:am|is) (i|me|@[a-zA-Z0-9_]+)'],
-           action=who_is),
+    Action('PICK A CARD FROM THE DECK',
+           keywords=[r'pick( a| INT)? cards?'],
+           action=pick_card),
 
-    # endregion
-
-    # region Admin
-
-    Action('GET USERS',
-           keywords=['get users?'],
-           action=get_users,
-           requires_admin=True),
-
-    Action('SHUT DOWN',
-           keywords=['shut( you)? (off|down)'],
-           multiple_answers=['okay, byee', 'okay master :)', 'cya soon everyone'],
-           requires_admin=True),
+    Action('COVERT A LITERAL TO INTEGER',
+           keywords=['INT to int(eger)?'],
+           action=to_int),
 
     # endregion
 
     # region Questions fall-back
 
-    Action('QUESTION FALLBACK',
+    Action('ANSWER ANY QUESTION ENDING WITH «?»',
            keywords=[r'\w.*?\?!*$'],
            multiple_answers=[
                # Affirmative

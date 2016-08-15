@@ -10,11 +10,12 @@ class Bot:
     Represents a Telegram bot
     """
 
-    def __init__(self, token):
+    def __init__(self, name, token):
         """
         Initializes the Telegram Bot with the given valid token.
         To get yours, please talk to @BotFather on Telegram.
         """
+        self.name
         self.token = token
         self.latest_update_id = 0  # So we can use it as an offset later
         self.user_db = UserDatabase()
@@ -106,8 +107,7 @@ class Bot:
 
         msg = {
             'chat_id': chat.id,
-            'text': text,
-            'parse_mode': 'markdown'}
+            'text': text}
 
         if reply_to_id != -1:  # Optional reply
             msg['reply_to_message_id'] = reply_to_id
