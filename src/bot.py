@@ -1,8 +1,9 @@
-import requests, json
-from actions.action_list import actions
-from users.user_database import UserDatabase
+import json
+import requests
 
+from actions.action_list import load_actions
 from messages.message import Message
+from users.user_database import UserDatabase
 
 
 class Bot:
@@ -15,11 +16,16 @@ class Bot:
         Initializes the Telegram Bot with the given valid token.
         To get yours, please talk to @BotFather on Telegram.
         """
-        self.name
+        print('Initializing {}...'.format(name))
+
+        self.name = name
         self.token = token
         self.latest_update_id = 0  # So we can use it as an offset later
         self.user_db = UserDatabase()
         self.running = False
+        self.actions = load_actions()
+
+        print('{} has been initialized.'.format(name))
 
     def __getattr__(self, method_name):
         """
@@ -31,6 +37,7 @@ class Bot:
         :return: Dictionary containing the result. It always has an 'ok'
                  to check whether the request was OK
         """
+
         def request(parameters={}, timeout=5):
             url = 'https://api.telegram.org/bot{}/{}'.format(self.token, method_name)
 
@@ -47,9 +54,10 @@ class Bot:
         This method should constantly be called to check for Telegram updates.
         Updates happen when an user sent a message to the bot, a photo, etc.
         """
-        params = {}
-        params['offset'] = self.latest_update_id + 1  # Add +1 to avoid getting the previous update
-        params['timeout'] = 300  # Arbitrarily large timeout for long polling
+        params = {
+            'offset': self.latest_update_id + 1,  # Add +1 to avoid getting the previous update
+            'timeout': 300  # Arbitrarily large timeout for long polling
+        }
 
         result = self.getUpdates(params, params['timeout'])
 
@@ -85,8 +93,8 @@ class Bot:
     def on_update(self, msg, should_reply):
         """
         This method is called when there was an update available
-
-        :param update: Dictionary containing all the update information
+        :param msg: The message which was on the update
+        :param should_reply: Hint that determines whether we should reply to it or just answer
         """
 
         if msg.text is not None:
@@ -94,23 +102,34 @@ class Bot:
             self.user_db.check_user(msg.sender)
 
             # Check whether we should act
-            for action in actions:
-                if action.act(self, msg, should_reply):
+            for action in self.actions:
+                should_act, data = action.should_act(self, msg, should_reply)
+                if should_act:
+                    action.act(data)
                     break  # If we've acted, stop looking for interaction
 
-    def send_message(self, chat, text, reply_to_id=-1):
+    def send_message(self, chat, text, reply_to_id=None, markdown=False):
         """
         Sends a message
+        :param reply_to_id: To which message ID are we replying?
         :param chat: The chat to where the message will be sent
         :param text: The text to be sent
         """
 
+        if len(text) > 1024:
+            text = "the message i was gonna send is so long that i just gave up, hope that's ok :)"
+
         msg = {
             'chat_id': chat.id,
-            'text': text}
+            'text': text
+        }
 
-        if reply_to_id != -1:  # Optional reply
+        # Options
+        if reply_to_id is not None:
             msg['reply_to_message_id'] = reply_to_id
+
+        if markdown:
+            msg['parse_mode'] = 'markdown'
 
         self.sendMessage(msg)
 
@@ -122,7 +141,7 @@ class Bot:
         print('The bot is now running. Press Ctrl+C to exit.')
         self.running = True
         try:
-            while (self.running):
+            while self.running:
                 self.check_updates()
         except KeyboardInterrupt:
             self.running = False
@@ -134,6 +153,6 @@ class Bot:
         """
         self.running = False
 
-    def print_json(self, jsonObj):
+    def print_json(self, json_obj):
         """Useful debugging method to print a formatted JSON"""
-        print(json.dumps(jsonObj, sort_keys=True, indent=2, separators=(',', ': ')))
+        print(json.dumps(json_obj, sort_keys=True, indent=2, separators=(',', ': ')))

@@ -1,28 +1,25 @@
-
 from re import split
 
 
 class NumberHelper:
-
     __known_word_to_int = {
         'a': 1,  # Consider 'a' as 1 (i.e., a hundred)
-        'zero':  0, 'ten': 10,
-        'one':   1, 'eleven':    11,
-        'two':   2, 'twelve':    12, 'twenty':  20,
-        'three': 3, 'thirteen':  13, 'thirty':  30,
-        'four':  4, 'fourteen':  14, 'forty':   40,
-        'five':  5, 'fifteen':   15, 'fifty':   50,
-        'six':   6, 'sixteen':   16, 'sixty':   60,
+        'zero': 0, 'ten': 10,
+        'one': 1, 'eleven': 11,
+        'two': 2, 'twelve': 12, 'twenty': 20,
+        'three': 3, 'thirteen': 13, 'thirty': 30,
+        'four': 4, 'fourteen': 14, 'forty': 40,
+        'five': 5, 'fifteen': 15, 'fifty': 50,
+        'six': 6, 'sixteen': 16, 'sixty': 60,
         'seven': 7, 'seventeen': 17, 'seventy': 70,
-        'eight': 8, 'eighteen':  18, 'eighty':  80,
-        'nine':  9, 'nineteen':  19, 'ninety':  90,
+        'eight': 8, 'eighteen': 18, 'eighty': 80,
+        'nine': 9, 'nineteen': 19, 'ninety': 90,
 
         # Also handle these cases
         'once': 1, 'twice': 2,
 
         'fourty': 40  # Common typo
     }
-
 
     @staticmethod
     def get_int(literal):

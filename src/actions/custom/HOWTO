@@ -1,0 +1,7 @@
+Place your own_action.py in any of these folders.
+These actions _must_ override ActionBase.
+
+Some actions have higher priority than others, but this may change.
+The reason why the folders aren't labeled as "priority0..n" is because
+it's easier for us, humans, to understand what does each action like this.
+Also, we all know insults come first.
