@@ -53,6 +53,17 @@ class Bot:
 
         return request
 
+    def clear_updates(self):
+        """
+        This method sends a getUpdates request with the offset higher than the latest update,
+        so this is not retrieved again (hence clearing the pending updates)
+        """
+        params = {
+            'offset': self.latest_update_id + 1,  # Add +1 to avoid getting the previous update
+            'timeout': 5
+        }
+        self.getUpdates(params, params['timeout'])
+
     def check_updates(self):
         """
         This method should constantly be called to check for Telegram updates.
@@ -161,6 +172,7 @@ class Bot:
         """
         Stops the bot.
         """
+        self.clear_updates()
         self.running = False
 
     def print_json(self, json_obj):
