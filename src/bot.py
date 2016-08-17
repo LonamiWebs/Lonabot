@@ -4,6 +4,7 @@ import requests
 from actions.action_list import load_actions
 from messages.message import Message
 from users.user_database import UserDatabase
+from datetime import datetime, timedelta
 
 
 class Bot:
@@ -24,6 +25,9 @@ class Bot:
         self.user_db = UserDatabase()
         self.running = False
         self.actions = load_actions()
+
+        # The limit age after which we won't reply to a message
+        self.msg_max_age = timedelta(minutes=1)
 
         print('{} has been initialized.'.format(name))
 
@@ -68,7 +72,7 @@ class Bot:
             #
             # This will prove useful to determine whether we should reply to a message or if
             # it is not necessary (because the bot's reply will be next to the message to reply)
-            chat_msgs = {}
+            chat_id_msgs = {}
 
             for entry in result['result']:
                 if entry['update_id'] > self.latest_update_id:
@@ -79,13 +83,18 @@ class Bot:
                         # Retrieve some information from the update
                         msg = Message(entry['message'])
 
-                        if msg.chat.id in chat_msgs:
-                            chat_msgs[msg.chat.id].append(msg)
-                        else:
-                            chat_msgs[msg.chat.id] = [msg]  # Initialize array
+                        # If the message is not from a group, or is but also is
+                        # younger than the limit age, we can add it
+                        if (msg.chat.type != 'group' or
+                                datetime.now() - msg.date < self.msg_max_age):
+
+                            if msg.chat.id in chat_id_msgs:
+                                chat_id_msgs[msg.chat.id].append(msg)
+                            else:
+                                chat_id_msgs[msg.chat.id] = [msg]  # Initialize array
 
             # Now iterate over the messages per again
-            for chat_id, msgs in chat_msgs.items():
+            for chat_id, msgs in chat_id_msgs.items():
                 should_reply = len(msgs) > 1
                 for msg in msgs:
                     self.on_update(msg, should_reply)
@@ -111,9 +120,10 @@ class Bot:
     def send_message(self, chat, text, reply_to_id=None, markdown=False):
         """
         Sends a message
-        :param reply_to_id: To which message ID are we replying?
         :param chat: The chat to where the message will be sent
         :param text: The text to be sent
+        :param reply_to_id: To which message ID are we replying?
+        :param markdown: Should the message use markdown formatting?
         """
 
         if len(text) > 1024:

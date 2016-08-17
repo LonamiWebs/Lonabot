@@ -1,6 +1,7 @@
 
 from users.user import User
 from chats.chat import Chat
+from datetime import datetime
 
 
 class Message:
@@ -17,6 +18,8 @@ class Message:
         self.id = msg['message_id']
         self.chat = Chat(msg['chat'])
         self.sender = User(msg['from'])
+
+        self.date = datetime.fromtimestamp(msg['date'])
 
         if 'text' in msg:
             self.text = msg['text']
