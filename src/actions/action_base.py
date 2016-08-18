@@ -7,13 +7,17 @@ class ActionBase:
     Defines an action (how the given bot will act to a message)
     """
 
-    def set_keywords(self, keywords, add_word_bounding=True, replace_spaces_non_printable=True):
+    def set_keywords(self, keywords,
+                     add_word_bounding=True,
+                     replace_spaces_non_printable=True,
+                     enable_multiline=False):
         """
         This method sets the keywords that trigger the action
 
         :param keywords: The keywords to be set (and enhanced)
         :param add_word_bounding: Should word bounding «\bword\b» added to the keywords?
         :param replace_spaces_non_printable: Should the spaces be replaced with «\s*»?
+        :param enable_multiline: Should the regex be able to match multiline strings?
         """
         self.__check_overrode()
 
@@ -26,7 +30,12 @@ class ActionBase:
 
             keyword = keyword.replace('INT', '(\d+|[\w\s-]+)')
 
-            self.keywords.append(re.compile(keyword, re.IGNORECASE))
+            flags = 0
+            flags |= re.IGNORECASE
+            if enable_multiline:
+                flags = re.MULTILINE
+
+            self.keywords.append(re.compile(keyword, flags))
 
     def should_act(self, bot, msg, should_reply):
         """

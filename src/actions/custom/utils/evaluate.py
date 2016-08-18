@@ -17,6 +17,9 @@ class EvaluateAction(ActionBase):
             self.send_msg('no new line allowed')
         else:
             try:
+                if ',' in expression:
+                    expression = expression.replace(',', '.')
+                
                 result = safe_eval_timeout(expression)
                 self.send_msg(data, '{} = {}'.format(expression, result))
 

@@ -1,6 +1,9 @@
 import json
 import requests
 
+import logging
+import traceback
+
 from actions.action_list import load_actions
 from messages.message import Message
 from users.user_database import UserDatabase
@@ -11,6 +14,8 @@ class Bot:
     """
     Represents a Telegram bot
     """
+
+    # region Initialization
 
     def __init__(self, name, token):
         """
@@ -30,6 +35,10 @@ class Bot:
         self.msg_max_age = timedelta(minutes=1)
 
         print('{} has been initialized.'.format(name))
+
+    # endregion
+
+    # region Telegram API
 
     def __getattr__(self, method_name):
         """
@@ -53,80 +62,9 @@ class Bot:
 
         return request
 
-    def clear_updates(self):
-        """
-        This method sends a getUpdates request with the offset higher than the latest update,
-        so this is not retrieved again (hence clearing the pending updates)
-        """
-        params = {
-            'offset': self.latest_update_id + 1,  # Add +1 to avoid getting the previous update
-            'timeout': 5
-        }
-        self.getUpdates(params, params['timeout'])
+    # endregion
 
-    def check_updates(self):
-        """
-        This method should constantly be called to check for Telegram updates.
-        Updates happen when an user sent a message to the bot, a photo, etc.
-        """
-        params = {
-            'offset': self.latest_update_id + 1,  # Add +1 to avoid getting the previous update
-            'timeout': 300  # Arbitrarily large timeout for long polling
-        }
-
-        result = self.getUpdates(params, params['timeout'])
-
-        if result['ok']:
-
-            # First iterate over all the updates and store them in a dictionary containing
-            # chat: [msg updates], so we can later tell how many updates were in a chat.
-            #
-            # This will prove useful to determine whether we should reply to a message or if
-            # it is not necessary (because the bot's reply will be next to the message to reply)
-            chat_id_msgs = {}
-
-            for entry in result['result']:
-                if entry['update_id'] > self.latest_update_id:
-                    # Update the latest entry not to call it again
-                    self.latest_update_id = entry['update_id']
-
-                    if 'message' in entry:
-                        # Retrieve some information from the update
-                        msg = Message(entry['message'])
-
-                        # If the message is not from a group, or is but also is
-                        # younger than the limit age, we can add it
-                        if (msg.chat.type != 'group' or
-                                datetime.now() - msg.date < self.msg_max_age):
-
-                            if msg.chat.id in chat_id_msgs:
-                                chat_id_msgs[msg.chat.id].append(msg)
-                            else:
-                                chat_id_msgs[msg.chat.id] = [msg]  # Initialize array
-
-            # Now iterate over the messages per again
-            for chat_id, msgs in chat_id_msgs.items():
-                should_reply = len(msgs) > 1
-                for msg in msgs:
-                    self.on_update(msg, should_reply)
-
-    def on_update(self, msg, should_reply):
-        """
-        This method is called when there was an update available
-        :param msg: The message which was on the update
-        :param should_reply: Hint that determines whether we should reply to it or just answer
-        """
-
-        if msg.text is not None:
-            # Check the user in our database
-            self.user_db.check_user(msg.sender)
-
-            # Check whether we should act
-            for action in self.actions:
-                should_act, data = action.should_act(self, msg, should_reply)
-                if should_act:
-                    action.act(data)
-                    break  # If we've acted, stop looking for interaction
+    # region Telegram API made easy
 
     def send_message(self, chat, text, reply_to_id=None, markdown=False):
         """
@@ -154,6 +92,77 @@ class Bot:
 
         self.sendMessage(msg)
 
+    # endregion
+
+    # region Updates
+
+    def clear_updates(self):
+        """
+        This method sends a getUpdates request with the offset higher than the latest update,
+        so this is not retrieved again (hence clearing the pending updates)
+        """
+        params = {
+            'offset': self.latest_update_id + 1,  # Add +1 to avoid getting the previous update
+            'timeout': 5
+        }
+        self.getUpdates(params, params['timeout'])
+
+    def check_updates(self):
+        """
+        This method should constantly be called to check for Telegram updates.
+        Updates happen when an user sent a message to the bot, a photo, etc.
+        """
+        params = {
+            'offset': self.latest_update_id + 1,  # Add +1 to avoid getting the previous update
+            'timeout': 300  # Arbitrarily large timeout for long polling
+        }
+
+        result = self.getUpdates(params, params['timeout'])
+
+        if result['ok']:
+
+            # Group the entries for easier use
+            chat_id_msgs = self.group_entries(result['result'])
+
+            # Now iterate over the messages per again
+            for chat_id, msgs in chat_id_msgs.items():
+                # If in this chat there were more than 1 message, reply instead only answer
+                should_reply = len(msgs) > 1
+                for msg in msgs:
+                    self.on_update(msg, should_reply)
+
+    def on_update(self, msg, should_reply):
+        """
+        This method is called when there was an update available
+        :param msg: The message which was on the update
+        :param should_reply: Hint that determines whether we should reply to it or just answer
+        """
+
+        if msg.text is not None:
+            # Check the user in our database
+            self.user_db.check_user(msg.sender)
+
+            # Check whether we should act
+            for action in self.actions:
+                should_act, data = action.should_act(self, msg, should_reply)
+                if should_act:
+                    try:
+                        action.act(data)
+                    except Exception as e:
+                        # Something baaad happened...
+                        if msg.sender.is_admin:
+                            self.send_message(msg.chat, 'oh, it was you admin, well here is the log:')
+                            self.send_message(msg.chat, traceback.format_exc())
+                        else:
+                            # TODO, this should be reported
+                            logging.error(traceback.format_exc())
+
+                    break  # If we've acted, stop looking for interaction
+
+    # endregion
+
+    # region Running
+
     def run(self):
         """
         Runs the bot forever until it's stopped.
@@ -175,6 +184,41 @@ class Bot:
         self.clear_updates()
         self.running = False
 
+    # endregion
+
+    # region Utils
+
     def print_json(self, json_obj):
         """Useful debugging method to print a formatted JSON"""
         print(json.dumps(json_obj, sort_keys=True, indent=2, separators=(',', ': ')))
+
+    def group_entries(self, entries):
+        """ This function groups entries from an update event into a dictionary
+        containing {chat_id: msg_list} for easier use
+
+        :param entries: The entries from an update's result
+        :return: The grouped entries as {chat_id: msg_list}
+        """
+        chat_id_msgs = {}
+        for entry in entries:
+            if entry['update_id'] > self.latest_update_id:
+                # Update the latest entry not to call it again
+                self.latest_update_id = entry['update_id']
+
+                if 'message' in entry:
+                    # Retrieve some information from the update
+                    msg = Message(entry['message'])
+
+                    # If the message is not from a group, or is but also is
+                    # younger than the limit age, we can add it
+                    if (msg.chat.type != 'group' or
+                                    datetime.now() - msg.date < self.msg_max_age):
+
+                        if msg.chat.id in chat_id_msgs:
+                            chat_id_msgs[msg.chat.id].append(msg)
+                        else:
+                            chat_id_msgs[msg.chat.id] = [msg]  # Initialize array
+
+        return chat_id_msgs
+
+    # endregion
