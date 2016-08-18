@@ -1,7 +1,7 @@
 from actions.action_base import ActionBase
 
 
-class ConvertInteger(ActionBase):
+class ConvertIntegerAction(ActionBase):
     def __init__(self):
         # Required
         self.name = 'CONVERT A LITERAL TO INTEGER'
