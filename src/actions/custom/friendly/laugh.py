@@ -4,10 +4,9 @@ from random import randint
 
 class LaughAction(ActionBase):
     def __init__(self):
-        # Required
-        self.name = 'LAUGH'
-        self.set_keywords(["that's funny", 'so( much)? fun', 'lmao', 'lmfao',
-                           'loo+l', 'a?ha+[ha]+', 'e?he+[he]+', 'xDD+'])
+        super().__init__(name="LAUGH",
+                         keywords=["that's funny", 'so( much)? fun', 'lmao+', 'lmfao+',
+                                   'loo+l', 'a?ha+[ha]+', 'e?he+[he]+', 'xDD+'])
 
     def act(self, data):
         option = randint(0, 99)

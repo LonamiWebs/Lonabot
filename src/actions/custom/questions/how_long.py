@@ -4,9 +4,8 @@ from random import choice, randint
 
 class HowLongAction(ActionBase):
     def __init__(self):
-        # Required
-        self.name = 'ANSWER «HOW LONG?» QUESTIONS'
-        self.set_keywords(['how long'])
+        super().__init__(name="ANSWER «HOW LONG?» QUESTIONS",
+                         keywords=['how long'])
 
     def act(self, data):
         if randint(0, 50) < 1:  # 1 out of 50 are exaggerated

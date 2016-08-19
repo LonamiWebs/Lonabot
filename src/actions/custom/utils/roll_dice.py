@@ -4,9 +4,9 @@ from random import choice, randint
 
 class RollDiceAction(ActionBase):
     def __init__(self):
-        # Required
-        self.name = 'ROLL A DICE'
-        self.set_keywords([r'roll (?:a )?dice(?: INT(?: times?)?)?'])
+        super().__init__(name="ROLL A DICE",
+                         keywords=['roll (?:a )?dice(?: INT(?: times?)?)?',
+                                   'roll INT dices?'])
 
     def act(self, data):
         answers = ['rolling... {}!', "roll roll {}", '{}', '{} came', '{} came now']

@@ -1,10 +1,8 @@
 from actions.action_base import ActionBase
 
+
 class MemeAction(ActionBase):
     def __init__(self):
-        # Required
-        self.name = 'SEND TEXT FACES'
-
         self.faces = {
             'lenny': '( ͡° ͜ʖ ͡°)',
             'shrug': '¯\_(ツ)_/¯',
@@ -28,10 +26,10 @@ class MemeAction(ActionBase):
             'gross': 'ಠ_ಠ',
             'look': 'ಠ_ಠ'
         }
-
-        # Join all the keywords together (as «face1|face2|...»)
-        keywords = '({})$'.format('|'.join([key for key in self.faces]))
-        self.set_keywords([keywords], add_word_bounding=False)
+        keywords = ['({})'.format(kw) for kw in self.faces]
+        super().__init__(name="SEND TEXT FACES",
+                         keywords=keywords,
+                         keyword_enhance_bounding=False)
 
     def act(self, data):
         face = data.match.group(1)

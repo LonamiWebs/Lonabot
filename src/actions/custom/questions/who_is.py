@@ -5,9 +5,8 @@ import re
 
 class WhoIsAction(ActionBase):
     def __init__(self):
-        # Required
-        self.name = 'ANSWER «WHO IS?» QUESTIONS'
-        self.set_keywords(['who (?:am|is|are|r) (u|you|lobot|@lonabot|i|me|@[a-zA-Z0-9_]+)'])
+        super().__init__(name="ANSWER «WHO IS?» QUESTIONS",
+                         keywords=['who (?:am|is|are|r) (u|you|lobot|@lonabot|i|me|@[a-zA-Z0-9_]+)'])
 
     def act(self, data):
         username = data.match.group(1)

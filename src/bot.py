@@ -50,7 +50,6 @@ class Bot:
         :return: Dictionary containing the result. It always has an 'ok'
                  to check whether the request was OK
         """
-
         def request(parameters={}, timeout=5):
             url = 'https://api.telegram.org/bot{}/{}'.format(self.token, method_name)
 
@@ -61,6 +60,21 @@ class Bot:
                 return {'ok': False}
 
         return request
+
+    def sendAudio(self, file, chat_id):
+        url = 'https://api.telegram.org/bot{}/sendAudio'.format(self.token)
+        parameters = {
+            'chat_id': chat_id
+        }
+
+        # {'file': ('report.csv', 'some,data,to,send\nanother,row,to,send\n')}
+
+        try:
+            files = {'audio': open(file, 'rb')}
+            return requests.post(url, params=parameters, files=files, timeout=60).json()
+
+        except requests.exceptions.ReadTimeout:
+            return {'ok': False}
 
     # endregion
 
@@ -76,6 +90,7 @@ class Bot:
         """
 
         if len(text) > 1024:
+            print('NOT SENDING MESSAGE: {}'.format(text))
             text = "the message i was gonna send is so long that i just gave up, hope that's ok :)"
 
         msg = {

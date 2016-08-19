@@ -3,15 +3,12 @@ from actions.action_base import ActionBase
 
 class ActionTemplate(ActionBase):
     def __init__(self):
-        # Required
-        self.name = 'My Action'
-        self.set_keywords(['some', 'random', 'keywords'])
+        super().__init__(name='My Action',
+                         keywords=['some', 'random', 'keywords'],
+                         answers=['some', 'random', 'answers'],  # NOT optional if act(self, data) isn't overrode
+                         requires_admin=False)
 
-        # Optional
-        self.requires_admin = True
-
-        # Note that this is NOT optional if act(self, data) isn't overrode
-        self.answers = ['some', 'random', 'answers']
+        # Apart from these, there are more parameters available
 
     '''
     # Optional. By default, act() picks a random answer.

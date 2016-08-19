@@ -6,34 +6,54 @@ class ActionBase:
     """
     Defines an action (how the given bot will act to a message)
     """
-
-    def set_keywords(self, keywords,
-                     add_word_bounding=True,
-                     replace_spaces_non_printable=True,
-                     enable_multiline=False):
+    def __init__(self, name, keywords,
+                 requires_admin=False, answers=[], enabled=True,
+                 keyword_enhance_bounding=True,
+                 keyword_enhance_spaces=True,
+                 keyword_match_whole_line=False,
+                 keyword_allow_emojis=False,
+                 keyword_enable_multiline=False):
         """
-        This method sets the keywords that trigger the action
+        Initializes the action base
+        :param name: The name of the action
+        :param keywords: The keywords that will trigger this action
 
-        :param keywords: The keywords to be set (and enhanced)
-        :param add_word_bounding: Should word bounding «\bword\b» added to the keywords?
-        :param replace_spaces_non_printable: Should the spaces be replaced with «\s*»?
-        :param enable_multiline: Should the regex be able to match multiline strings?
+        :param requires_admin: Does the action require admin privileges?
+        :param answers: How does the bot reply? This CANNOT be empty if «act(self, data)» is not overrode
+        :param enabled: Is the action enabled? Some such as those that require tokens may not be
+
+        :param keyword_enhance_bounding: Should word bounding «\bword\b» added to the keywords?
+        :param keyword_enhance_spaces: Should the spaces be replaced with «\s*»?
+        :param keyword_match_whole_line: Should the keyword match the whole line? This overrides bounding enhancement
+        :param keyword_allow_emojis: Should the keyword allow emojis (enable unicode, may be slower)
+        :param keyword_enable_multiline: Should the regex be able to match multiline strings?
         """
-        self.__check_overrode()
+        # Set values which don't need to be enhanced
+        self.name = name
+        self.requires_admin = requires_admin
+        self.answers = answers
+        self.enabled = enabled
 
+        # Set and enhance the keywords
         self.keywords = []
         for keyword in keywords:
-            if add_word_bounding:
+            if keyword_match_whole_line:
+                keyword = '^{}$'.format(keyword)
+            elif keyword_enhance_bounding:
                 keyword = r'\b{}\b'.format(keyword)
-            if replace_spaces_non_printable:
+
+            if keyword_enhance_spaces:
                 keyword = keyword.replace(' ', r'\s+')
 
             keyword = keyword.replace('INT', '(\d+|[\w\s-]+)')
 
+            # Set the appropriated flags
             flags = 0
             flags |= re.IGNORECASE
-            if enable_multiline:
-                flags = re.MULTILINE
+            if keyword_enable_multiline:
+                flags |= re.MULTILINE
+            if keyword_allow_emojis:
+                flags |= re.UNICODE
 
             self.keywords.append(re.compile(keyword, flags))
 
@@ -51,25 +71,27 @@ class ActionBase:
 
         :return: (True, ActionData) if we acted; (False, None) otherwise
         """
-        self.__check_overrode()
 
-        # requires_admin may have not been defined (not set), default's to False
-        requires_admin = getattr(self, 'requires_admin', False)
-        if requires_admin and not msg.sender.is_admin:
+        if not self.enabled:
+            return False, None  # We can't fire a non-enabled action
+
+        if self.requires_admin and not msg.sender.is_admin:
             return False, None  # Early terminate, we won't act
 
         # See if we can match the sent text with any of this action's keywords
         match = None
-        for keyword in self.keywords:
+        match_index = None
+        for index, keyword in enumerate(self.keywords):
             match = keyword.search(msg.text)
             if match:
+                match_index = index
                 break  # Found a match, stop looking in the keywords
 
         if not match:
             return False, None  # No match found, don't act
 
         # Set the action data
-        data = ActionData(bot, msg, match, should_reply)
+        data = ActionData(bot, msg, match, match_index, should_reply)
         return True, data
 
     def act(self, data):
@@ -79,7 +101,6 @@ class ActionBase:
 
         :param data: The data available to the action
         """
-        self.__check_overrode()
         self.send_msg(data, random.choice(self.answers))
 
     def send_msg(self, data, text, reply=False, markdown=False):
@@ -99,7 +120,3 @@ class ActionBase:
         print('Replied to @{} ({}): «{}» → «{}»'
               .format(data.ori_msg.sender.username, data.ori_msg.sender.id,
                       data.ori_msg.text, text))
-
-    def __check_overrode(self):
-        if not hasattr(self, 'name'):
-            raise NotImplementedError('Make sure to override ActionBase and set the appropriated attributes')

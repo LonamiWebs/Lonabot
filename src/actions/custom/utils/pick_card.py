@@ -4,9 +4,9 @@ from random import choice, randint
 
 class PickCardAction(ActionBase):
     def __init__(self):
-        # Required
-        self.name = 'PICK A CARD FROM THE DECK'
-        self.set_keywords([r'pick( a| INT)? cards?'])
+        super().__init__(name="PICK A CARD FROM THE DECK",
+                         keywords=['pick a card (INT)',
+                                   'pick (INT) cards?'])
 
     def act(self, data):
         times = data.get_match_int(1, fallback=1)

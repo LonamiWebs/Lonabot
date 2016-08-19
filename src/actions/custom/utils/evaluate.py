@@ -5,11 +5,9 @@ from safe_eval import *
 
 class EvaluateAction(ActionBase):
     def __init__(self):
-        # Required
-        self.name = 'EVALUATE A MATHEMATICAL EXPRESSION'
-
-        # Evaluate anything which looks like a math expression (any digit and the operators)
-        self.set_keywords([r"^(?:eval|evaluate|what is|what's)?([\d+-/*( )]+)"], add_word_bounding=False)
+        super().__init__(name="EVALUATE A MATHEMATICAL EXPRESSION",
+                         keywords=[r"^(?:eval|evaluate|what is|what's)?([\d+-/*( )]+)$"],
+                         keyword_enhance_bounding=False)
 
     def act(self, data):
         expression = data.match.group(1)

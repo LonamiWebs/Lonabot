@@ -3,12 +3,9 @@ from actions.action_base import ActionBase
 
 class GetUsersAction(ActionBase):
     def __init__(self):
-        # Required
-        self.name = 'GET USERS'
-        self.set_keywords(['get user?'])
-
-        # Optional
-        self.requires_admin = True
+        super().__init__(name='GET USERS',
+                         keywords=['get users?'],
+                         requires_admin=True)
 
     def act(self, data):
         self.send_msg(data, 'there are {} users online master'
