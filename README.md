@@ -15,8 +15,8 @@ yet easily expandable, example on how Telegram bots work (and can work) so you c
 implement it again on any other programming language, such as C#, Java, etcetera.
 
 ### How can I run it?
-1. Make sure you have a Python interpreter (preferably 3.x compatible).
-2. Create a file named `TG.token` under `/Tokens`. Inside, paste your own bot's
+1. Make sure you have a Python interpreter (preferrably 3.x compatible).
+2. Create a file named `TG` under `/Tokens`. Inside, paste your own bot's
 token (if you don't have a bot token, or even a bot, you may want to have
 a look at [this](https://core.telegram.org/bots#3-how-do-i-create-a-bot)).
 3. Run `python3 main.py`. Done!

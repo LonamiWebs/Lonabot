@@ -8,5 +8,5 @@ class GetUsersAction(ActionBase):
                          requires_admin=True)
 
     def act(self, data):
-        self.send_msg(data, 'there are {} users online master'
-                      .format(data.bot.user_db.user_count()))
+        self.send_msg(data, '{} people have talked to me since i was started for the first time'
+                      .format(data.bot.database.user_count()))

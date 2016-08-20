@@ -12,7 +12,7 @@ class WhoIsAction(ActionBase):
         username = data.match.group(1)
         if username[0] == '@' and username != '@lonabot':  # Username
             self.send_msg(data, 'let me search it...')
-            user = data.bot.user_db.get_user(username[1:])  # Skip the @
+            user = data.bot.database.get_user(username[1:])  # Skip the @
             if user is None:
                 self.send_msg(data, "sorry i don't know it")
             else:

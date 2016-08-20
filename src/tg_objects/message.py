@@ -1,7 +1,7 @@
-
-from users.user import User
-from chats.chat import Chat
 from datetime import datetime
+
+from tg_objects.chat import Chat
+from tg_objects.user import User
 
 
 class Message:

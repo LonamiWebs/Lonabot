@@ -1,9 +1,11 @@
 from bot import Bot
+from tokens import load_token
 
-with open('../Tokens/TG.token', encoding='utf-8') as file:
-    token = file.readline().strip()
-
-bot = Bot('Lobot', token)
 
 if __name__ == "__main__":
-    bot.run()
+    tg_token = load_token('TG')
+    if tg_token is None:
+        print('**The bot will not run**. Please make sure that you have read the full README.md!')
+    else:
+        bot = Bot('Lobot', load_token('TG'))
+        bot.run()

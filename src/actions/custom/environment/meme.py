@@ -26,7 +26,7 @@ class MemeAction(ActionBase):
             'gross': 'ಠ_ಠ',
             'look': 'ಠ_ಠ'
         }
-        keywords = ['({})'.format(kw) for kw in self.faces]
+        keywords = ['({})$'.format(kw) for kw in self.faces]
         super().__init__(name="SEND TEXT FACES",
                          keywords=keywords,
                          keyword_enhance_bounding=False)

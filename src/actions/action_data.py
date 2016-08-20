@@ -21,6 +21,10 @@ class ActionData:
         self.match_index = match_index
         self.should_reply = should_reply
 
+        # For faster access
+        self.chat = original_msg.chat
+        self.sender = original_msg.sender
+
     def get_match_int(self, index, fallback=1):
         integer = self.match.group(index)
         if integer is None:  # No group captured, use fallback

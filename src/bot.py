@@ -1,13 +1,13 @@
 import json
-import requests
-
 import logging
 import traceback
+from datetime import datetime, timedelta
+
+import requests
+from database import Database
 
 from actions.action_list import load_actions
-from messages.message import Message
-from users.user_database import UserDatabase
-from datetime import datetime, timedelta
+from tg_objects.message import Message
 
 
 class Bot:
@@ -27,9 +27,11 @@ class Bot:
         self.name = name
         self.token = token
         self.latest_update_id = 0  # So we can use it as an offset later
-        self.user_db = UserDatabase()
         self.running = False
         self.actions = load_actions()
+
+        # Set and load database
+        self.database = Database()
 
         # The limit age after which we won't reply to a message
         self.msg_max_age = timedelta(minutes=1)
@@ -50,31 +52,16 @@ class Bot:
         :return: Dictionary containing the result. It always has an 'ok'
                  to check whether the request was OK
         """
-        def request(parameters={}, timeout=5):
+        def request(parameters={}, timeout=5, files=None):
             url = 'https://api.telegram.org/bot{}/{}'.format(self.token, method_name)
 
             try:
-                return requests.get(url, json=parameters, timeout=timeout).json()
+                return requests.get(url, params=parameters, timeout=timeout, files=files).json()
 
             except requests.exceptions.ReadTimeout:
                 return {'ok': False}
 
         return request
-
-    def sendAudio(self, file, chat_id):
-        url = 'https://api.telegram.org/bot{}/sendAudio'.format(self.token)
-        parameters = {
-            'chat_id': chat_id
-        }
-
-        # {'file': ('report.csv', 'some,data,to,send\nanother,row,to,send\n')}
-
-        try:
-            files = {'audio': open(file, 'rb')}
-            return requests.post(url, params=parameters, files=files, timeout=60).json()
-
-        except requests.exceptions.ReadTimeout:
-            return {'ok': False}
 
     # endregion
 
@@ -106,6 +93,45 @@ class Bot:
             msg['parse_mode'] = 'markdown'
 
         self.sendMessage(msg)
+
+    def send_audio(self, chat, file_id, file_path=None, title=None, artist=None):
+        """
+        Sends an audio file to the given chat
+
+        :param chat: The chat to which the file will be sent
+        :param file_path: The path to the audio file that will be sent. May be None if file_id is provided.
+        :param file_id: The ID of the file that will be sent
+        :param tg_id: The ID of the file in the Telegram servers, not to re-upload the same file
+        :param title: The title of the song
+        :param artist: The artist of the song
+        """
+        parameters = {
+            'chat_id': chat.id
+        }
+        if title is not None:
+            parameters['title'] = title
+        if artist is not None:
+            parameters['performer'] = artist
+
+        # First check if the file id is already on Telegram servers
+        tg_id = self.database.check_file_audio(file_id)
+
+        # If it was uploaded before, don't upload it again
+        if tg_id is not None:
+            parameters['audio'] = tg_id
+            files=None
+
+        else:  # Otherwise, set the files that we'll upload
+            files = {'audio': open(file_path, 'rb')}
+
+        result = self.sendAudio(parameters, timeout=60, files=files)
+        files['audio'].close()
+
+        # If we did upload the file for the first time, add it to the database
+        if tg_id is None and result['ok']:
+            tg_id = result['result']['audio']['file_id']
+            self.database.add_file_audio(file_id, tg_id, title, artist)
+
 
     # endregion
 
@@ -155,7 +181,7 @@ class Bot:
 
         if msg.text is not None:
             # Check the user in our database
-            self.user_db.check_user(msg.sender)
+            self.database.check_user(msg.sender)
 
             # Check whether we should act
             for action in self.actions:
@@ -197,6 +223,7 @@ class Bot:
         Stops the bot.
         """
         self.clear_updates()
+        self.database.close()
         self.running = False
 
     # endregion
