@@ -12,7 +12,6 @@ class ActionsAction(ActionBase):
                          requires_admin=True)
 
     def act(self, data):
-        print('oh')
         if data.match_index == 0:  # List
             self.send_msg(data, markdown=True, text='\n'.join('`[{}]` {}- {}'
                                           .format(str(index).ljust(2), '✅' if action.enabled else '❌', action.name.lower())

@@ -125,12 +125,13 @@ class Bot:
             files = {'audio': open(file_path, 'rb')}
 
         result = self.sendAudio(parameters, timeout=60, files=files)
-        files['audio'].close()
 
         # If we did upload the file for the first time, add it to the database
-        if tg_id is None and result['ok']:
-            tg_id = result['result']['audio']['file_id']
-            self.database.add_file_audio(file_id, tg_id, title, artist)
+        if tg_id is None:
+            files['audio'].close()  # Close the audio file if one was provided
+            if result['ok']:
+                tg_id = result['result']['audio']['file_id']
+                self.database.add_file_audio(file_id, tg_id, title, artist)
 
 
     # endregion
