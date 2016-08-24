@@ -156,7 +156,6 @@ class DownloadAction(ActionBase):
                 # TODO remove this dirty hack?
                 # Instead trying to "guess" where the file was saved, actually retrieve where it was saved!
                 title = result['title']
-                artist = None
                 file_path = os.path.join(self.temp_dir, '{}.mp3'
                                          .format(youtube_dl.utils
                                                  .sanitize_filename(title, restricted=True)))
@@ -175,4 +174,3 @@ class DownloadAction(ActionBase):
 
             except ydl.UnavailableVideoError:
                 return None, None, None
-

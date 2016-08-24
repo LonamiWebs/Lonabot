@@ -23,3 +23,11 @@ class AnswerAnyQuestionAction(ActionBase):
                                    # Avoiding the question
                                    'sorry i gotta go', 'idk right now', "i'm busy i'll answer l8r", 'why would you ask that?'
                                ])
+
+    def should_act(self, bot, msg, should_reply):
+        # Do NOT trigger if 'what' is in the message, since it would make no sense
+        # to answer a «What...» question with yes/no
+        if 'what' in msg.text.lower():
+            return False, None
+        else:
+            return super().should_act(bot, msg, should_reply)
