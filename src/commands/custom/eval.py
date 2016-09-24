@@ -9,6 +9,10 @@ class EvaluateAction(CommandBase):
                          examples='/eval 5+2*(5-1)/2')
 
     def act(self, data):
+        if not data.parameter:
+            self.show_invalid_syntax(data)
+            return
+
         expression = data.parameter
         if '\n' in expression:
             self.send_msg(data, 'Sorry, new lines are not allowed.')

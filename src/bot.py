@@ -9,6 +9,10 @@ from commands.command_list import load_commands
 from tg_objects.message import Message
 from tg_objects.user import User
 
+# Bot name and username
+name = 'Lobot'
+username = 'lonabot'
+
 
 class Bot:
     """
@@ -53,7 +57,7 @@ class Bot:
                 for line in file:
                     split = line.split('=')
                     friend_id = int(split[0])
-                    friend_alias = split[1]
+                    friend_alias = split[1].strip()
                     self.friends[friend_id] = friend_alias
 
     def save_friends(self):
@@ -247,8 +251,9 @@ class Bot:
         # We only want our friends
         if msg.sender.id not in self.friends:
             self.send_message(msg.chat,
-                              text="Sorry {}, but you're not my friend. "
-                              "Ask the *Admin* to `/friend add {}` and you will be my friend."
+                              text="Sorry {0}, but this is a _personal bot_ and you're not in my friend list. "
+                              "Ask the *Admin* to issue the following command and you will be my friend:\n"
+                              "`/friend add {1} {0}`"
                               .format(msg.sender.name, msg.sender.id),
                               markdown=True)
 

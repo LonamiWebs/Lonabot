@@ -78,8 +78,12 @@ class Mp3Command(CommandBase):
         self.send_msg(data, 'Sorry, I do not have more videos to show you.')
 
     def act(self, data):
+        if not data.parameter:
+            self.show_invalid_syntax(data)
+            return
+
         url = None
-        if self.pending:
+        if self.is_pending(data.sender.id):
             item_index, youtube_items = self.get_pending(data.sender.id)
 
             # Did the user want this video?

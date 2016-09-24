@@ -16,6 +16,10 @@ class FriendCommand(CommandBase):
                          requires_admin=True)
 
     def act(self, data):
+        if not data.parameter:
+            self.show_invalid_syntax(data)
+            return
+
         match = re.match(r'add (\d+) (\w+)', data.parameter)
         if match:
             # Add friend

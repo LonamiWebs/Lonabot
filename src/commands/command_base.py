@@ -1,4 +1,6 @@
 import random, re
+
+import bot
 from commands.command_data import CommandData
 
 
@@ -7,7 +9,7 @@ class CommandBase:
     Defines an action (how the given bot will act to a message)
     """
     def __init__(self, command, examples,
-                 takes_parameters=True, enabled=True, requires_admin=False):
+                 enabled=True, requires_admin=False):
         # Set values which don't need to be enhanced
         self.command = command
         self.description = self.__doc__
@@ -16,13 +18,13 @@ class CommandBase:
         self.enabled = enabled
         self.requires_admin = requires_admin
 
-        self.takes_parameters = takes_parameters
-        if takes_parameters:
-            self.act_regex = re.compile(r'^/{} (.+)$'.format(command), flags=re.IGNORECASE)
-        else:
-            self.act_regex = re.compile(r'^/{}$'.format(command), flags=re.IGNORECASE)
+        # /command@botusername parameters
+        #         ^ these parts being optional
+        self.act_regex = re.compile(r'^/{}(?:@{})?(?: (.+))?$'
+                                    .format(command, bot.username), flags=re.IGNORECASE)
+        self.pending = {}  # Users with pending actions
 
-        self.pending = {}
+    # region Pending state
 
     def set_pending(self, sender_id, data=None):
         """Sets the pending state"""
@@ -37,6 +39,26 @@ class CommandBase:
         data = self.pending[sender_id]
         del self.pending[sender_id]
         return data
+
+    # endregion
+
+    # region Description
+
+    def small_description(self):
+        return '/{} - _{}_'.format(self.command, self.description)
+
+    def long_description(self):
+        return ('*Name*: {}\n'
+                '*Description*: _{}_\n\n'
+                '*Examples*:\n{}'.format(self.__class__.__name__,
+                                      self.description,
+                                      '\n'.join(
+                                          '▸ `{}`'.format(e)
+                                          for e in self.examples)))
+
+    # endregion
+
+    # region Acting
 
     def should_act(self, bot, msg, should_reply):
         """
@@ -67,10 +89,10 @@ class CommandBase:
             return False, None  # No match found, don't act
 
         # Set the action data
-        if self.takes_parameters:
-            data = CommandData(bot, msg, match.group(1), should_reply)
-        else:
-            data = CommandData(bot, msg, None, should_reply)
+        data = CommandData(bot=bot,
+                           original_msg=msg,
+                           parameter=match.group(1).strip() if match.group(1) else None,
+                           should_reply=should_reply)
 
         return True, data
 
@@ -82,6 +104,10 @@ class CommandBase:
         :param data: The data available to the action
         """
         raise NotImplementedError()
+
+    # endregion
+
+    # region Utilities
 
     def send_msg(self, data, text, reply=False, markdown=False):
         """
@@ -95,3 +121,9 @@ class CommandBase:
             data.bot.send_message(data.ori_msg.chat, text, data.ori_msg.id, markdown=markdown)
         else:
             data.bot.send_message(data.ori_msg.chat, text, markdown=markdown)
+
+    def show_invalid_syntax(self, data):
+        self.send_msg(data, 'The command syntax was invalid. See `/help {}` for more information.'
+                      .format(self.command), markdown=True)
+
+    # endregion

@@ -7,8 +7,7 @@ class KysCommand(CommandBase):
     def __init__(self):
         super().__init__(command='kys',
                          examples=['/kys'],
-                         requires_admin=True,
-                         takes_parameters=False)
+                         requires_admin=True)
 
     def act(self, data):
         self.send_msg(data, 'Shutting down.')

@@ -13,5 +13,8 @@ class ConvertCommand(CommandBase):
                          ])
 
     def act(self, data):
-        self.send_msg(data, '{} = {}'
-                      .format(data.parameter, NumberHelper.get_int(data.parameter)))
+        if data.parameter:
+            self.send_msg(data, '{} = {}'
+                          .format(data.parameter, NumberHelper.get_int(data.parameter)))
+        else:
+            self.show_invalid_syntax(data)
