@@ -1,7 +1,11 @@
 import os.path
+import re
 from io import BytesIO
 
 import requests
+from subprocess import call
+
+from shutil import copyfile
 
 from commands.command_base import CommandBase
 from utils.tokens import load_token
@@ -31,16 +35,15 @@ class Mp3Command(CommandBase):
         if not youtube_dl:
             enabled = False
 
-        # Then, check for the token
+        # The token is optional, since it's only required for the queries
         else:
             self.token = load_token('YT')
             if self.token is None:
-                enabled = False
+                print('Warning: No YouTube token given. Queries will not work!')
 
-            else:
-                # Ensure we have the directory for downloading files
-                self.temp_dir = '../Data/Tmp/YT'
-                os.makedirs(self.temp_dir, exist_ok=True)
+            # Ensure we have the directory for downloading files
+            self.temp_dir = '../Data/Tmp/Mp3'
+            os.makedirs(self.temp_dir, exist_ok=True)
 
         # After all the checks, finally initialize the action
         super().__init__(command='mp3',
@@ -82,7 +85,7 @@ class Mp3Command(CommandBase):
             self.show_invalid_syntax(data)
             return
 
-        url = None
+        url, thumbnail_url = None, None
         if self.is_pending(data.sender.id):
             item_index, youtube_items = self.get_pending(data.sender.id)
 
@@ -92,6 +95,7 @@ class Mp3Command(CommandBase):
                 self.send_msg(data, 'OK, I will send you that song after I prepared it.')
                 video_id = youtube_items[item_index]['id']['videoId']
                 url = self.get_yt_url(video_id)
+                thumbnail_url = youtube_items[item_index]['snippet']['thumbnails']['high']['url']
 
             # Did the user wanted a different video?
             elif data.parameter == '/no':
@@ -110,7 +114,7 @@ class Mp3Command(CommandBase):
             url = data.parameter
 
         # The user entered a query, so look in YouTube
-        else:
+        elif self.token:
             max_results = 10
             # First, look for the video given the query
             try:
@@ -129,6 +133,8 @@ class Mp3Command(CommandBase):
                 self.send_msg(data, 'Sorry, the request took too long.')
 
             return
+        else:
+            self.send_msg(data, 'Sorry, I lack of the API token to do that. Provide an URL instead.')
 
         # If we don't have any URL, no actions were taken; do nothing
         if not url:
@@ -139,8 +145,13 @@ class Mp3Command(CommandBase):
         if url in self.already_uploaded:
             data.bot.send_audio(data.chat, tg_id=self.already_uploaded[url])
 
-        else:  # Otherwise download and upload
-            file_path, title, artist = self._download_mp3(url)
+        # Otherwise download and upload
+        else:
+            # Try to guess the video thumbnail from the url
+            if not thumbnail_url:
+                thumbnail_url = self.try_guess_thumbnail_url(url)
+
+            file_path, title, artist = self._download_mp3(url, thumbnail_url)
 
             # The download may fail due to the file being too large
             if file_path is None:
@@ -157,7 +168,20 @@ class Mp3Command(CommandBase):
                 # Delete the file after it has been sent
                 os.remove(file_path)
 
-    def _download_mp3(self, url):
+    def try_guess_thumbnail_url(self, url):
+        """Tries to guess the URL for the thumbnail given a video URL"""
+        match = re.match(r'^https?://youtu.be/(.{11}).*$', url)
+        if match:
+            return 'https://img.youtube.com/vi/{}/maxresdefault.jpg'.format(match.group(1))
+
+        # https://www.youtube.com/watch?v=2rZBEVqtA_8&feature=youtu.be&t=1m
+        match = re.match(r'^https?://(?:www\.)?youtube.com/watch?.*?v=(.{11}).*?$', url)
+        if match:
+            return 'https://img.youtube.com/vi/{}/maxresdefault.jpg'.format(match.group(1))
+
+
+
+    def _download_mp3(self, url, thumbnail_url=None):
         """
         :return: (file_path, title and artist) if the download was successful
         """
@@ -187,14 +211,32 @@ class Mp3Command(CommandBase):
 
             # Instead trying to "guess" where the file was saved, actually retrieve where it was saved!
             title = result['title']
-            file_path = os.path.join(self.temp_dir, '{}.mp3'
-                                     .format(youtube_dl.utils
-                                             .sanitize_filename(title)))
+            base_path = os.path.join(self.temp_dir, youtube_dl.utils.sanitize_filename(title))
+            file_path = base_path + '.mp3'
 
             # Check if the file exists, if it doesn't, then it
             # was not downloaded because it was too large
             if not os.path.isfile(file_path):
                 return None, None, None
+
+            # Download and inject the thumbnail, if any
+            if thumbnail_url:
+                thumbnail_path = base_path + '.jpg'
+                r = requests.get(thumbnail_url, stream=True)
+                with open(thumbnail_path, 'wb') as file:
+                    for chunk in r.iter_content(chunk_size=1024 * 128):
+                        file.write(chunk)
+
+                # Inject it using ffmpeg, into a temporary file
+                temporary = '{}.injecting.mp3'.format(base_path)
+                call('ffmpeg -i "{}" -i "{}" -map 0:0 -map 1:0 -c copy -id3v2_version 3 '
+                     '-metadata:s:v title="Album cover" -metadata:s:v comment="Cover" "{}"'
+                    .format(file_path, thumbnail_path, temporary), shell=True)
+
+                # Then delete the original files and copy the new one back
+                os.remove(file_path)
+                os.remove(thumbnail_path)
+                os.rename(temporary, file_path)
 
             # Check if the title is in the «artist - title» format
             if '-' in title:

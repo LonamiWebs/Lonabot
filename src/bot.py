@@ -2,6 +2,7 @@ import logging
 import traceback
 from datetime import datetime, timedelta
 from os import path
+from shutil import rmtree
 
 import requests
 
@@ -33,6 +34,9 @@ class Bot:
         self.latest_update_id = 0  # So we can use it as an offset later
         self.running = False
         self.commands = load_commands()
+
+        # Temporary directory
+        self.temp_dir = '../Data/Tmp'
 
         # We will only talk with our friends
         self.friends_path = '../Data/lonabot.friends'
@@ -298,7 +302,12 @@ class Bot:
         """
         Stops the bot.
         """
-        self.clear_updates()
+        try:
+            self.clear_updates()
+            rmtree(self.temp_dir)
+        except:
+            pass
+
         self.running = False
 
     # endregion
