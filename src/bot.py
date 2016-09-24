@@ -1,12 +1,13 @@
-import json
 import logging
 import traceback
 from datetime import datetime, timedelta
+from os import path
 
 import requests
 
 from commands.command_list import load_commands
 from tg_objects.message import Message
+from tg_objects.user import User
 
 
 class Bot:
@@ -29,10 +30,51 @@ class Bot:
         self.running = False
         self.commands = load_commands()
 
+        # We will only talk with our friends
+        self.friends_path = '../Data/lonabot.friends'
+        self.friends = {}
+        self.load_friends()
+
         # The limit age after which we won't reply to a message
         self.msg_max_age = timedelta(minutes=1)
 
         print('{} has been initialized.'.format(name))
+
+    # endregion
+
+    # region Friends
+
+    def load_friends(self):
+        """Loads the friend list"""
+        self.friends.clear()
+        self.friends[User.admin_id] = 'Admin'
+        if path.isfile(self.friends_path):
+            with open(self.friends_path, 'r') as file:
+                for line in file:
+                    split = line.split('=')
+                    friend_id = int(split[0])
+                    friend_alias = split[1]
+                    self.friends[friend_id] = friend_alias
+
+    def save_friends(self):
+        """Saves the friend list"""
+        with open(self.friends_path, 'w') as file:
+            for friend_id, friend_alias in self.friends.items():
+                file.write('{}={}\n'.format(friend_id, friend_alias))
+
+    def add_friend(self, friend_id, friend_alias):
+        """Adds a friend to the bot"""
+        self.friends[friend_id] = friend_alias
+        self.save_friends()
+
+    def del_friend(self, friend_id):
+        """Removes a friend from the bot, returning its alias"""
+        if friend_id != User.admin_id and friend_id in self.friends:
+            alias = self.friends[friend_id]
+            del self.friends[friend_id]
+            self.save_friends()
+
+            return alias
 
     # endregion
 
@@ -202,7 +244,15 @@ class Bot:
         :param msg: The message which was on the update
         :param should_reply: Hint that determines whether we should reply to it or just answer
         """
-        if msg.text is not None:
+        # We only want our friends
+        if msg.sender.id not in self.friends:
+            self.send_message(msg.chat,
+                              text="Sorry {}, but you're not my friend. "
+                              "Ask the *Admin* to `/friend add {}` and you will be my friend."
+                              .format(msg.sender.name, msg.sender.id),
+                              markdown=True)
+
+        elif msg.text is not None:
             # Check whether we should act
             for command in self.commands:
                 should_act, data = command.should_act(self, msg, should_reply)

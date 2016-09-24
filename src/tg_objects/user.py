@@ -1,7 +1,9 @@
 class User:
-    """
-    Represents an user
-    """
+    """Represents an user"""
+
+    # You may want to change this!
+    admin_id = 10885151  # @Lonami
+
     def __init__(self, user):
         """
         Initializes an user instance
@@ -26,7 +28,7 @@ class User:
             self.username = user[3]
 
         # Special case, our loved admin!
-        self.is_admin = self.id == 10885151  # @Lonami
+        self.is_admin = self.id == self.admin_id
 
     # Override string representation
     def __str__(self):
