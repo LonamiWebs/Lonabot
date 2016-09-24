@@ -4,9 +4,8 @@ import traceback
 from datetime import datetime, timedelta
 
 import requests
-from database import Database
 
-from actions.action_list import load_actions
+from commands.command_list import load_commands
 from tg_objects.message import Message
 
 
@@ -28,10 +27,7 @@ class Bot:
         self.token = token
         self.latest_update_id = 0  # So we can use it as an offset later
         self.running = False
-        self.actions = load_actions()
-
-        # Set and load database
-        self.database = Database()
+        self.commands = load_commands()
 
         # The limit age after which we won't reply to a message
         self.msg_max_age = timedelta(minutes=1)
@@ -76,9 +72,8 @@ class Bot:
         :param markdown: Should the message use markdown formatting?
         """
 
-        if len(text) > 1024:
-            print('NOT SENDING MESSAGE: {}'.format(text))
-            text = "the message i was gonna send is so long that i just gave up, hope that's ok :)"
+        if len(text) > 4096:
+            text = "Sorry, that message is too large to be sent."
 
         msg = {
             'chat_id': chat.id,
@@ -94,16 +89,17 @@ class Bot:
 
         self.sendMessage(msg)
 
-    def send_audio(self, chat, file_id, file_path=None, title=None, artist=None):
+    def send_audio(self, chat, file_handle=None, tg_id=None, title=None, artist=None):
         """
         Sends an audio file to the given chat
 
         :param chat: The chat to which the file will be sent
-        :param file_path: The path to the audio file that will be sent. May be None if file_id is provided.
-        :param file_id: The ID of the file that will be sent
-        :param tg_id: The ID of the file in the Telegram servers, not to re-upload the same file
+        :param file_handle: The file handle to the audio file that will be sent
+        :param tg_id: If the audio was already uploaded, this can be provided not to upload it again
         :param title: The title of the song
         :param artist: The artist of the song
+
+        :returns: The uploaded file Telegram ID (tg_id), which can be later used
         """
         parameters = {
             'chat_id': chat.id
@@ -113,26 +109,54 @@ class Bot:
         if artist is not None:
             parameters['performer'] = artist
 
-        # First check if the file id is already on Telegram servers
-        tg_id = self.database.check_file_audio(file_id)
-
         # If it was uploaded before, don't upload it again
         if tg_id is not None:
             parameters['audio'] = tg_id
-            files=None
+            files = None
 
         else:  # Otherwise, set the files that we'll upload
-            files = {'audio': open(file_path, 'rb')}
+            files = {'audio': file_handle}
 
         result = self.sendAudio(parameters, timeout=60, files=files)
 
-        # If we did upload the file for the first time, add it to the database
-        if tg_id is None:
-            files['audio'].close()  # Close the audio file if one was provided
-            if result['ok']:
-                tg_id = result['result']['audio']['file_id']
-                self.database.add_file_audio(file_id, tg_id, title, artist)
+        # Return the file ID if everything went okay
+        if result['ok']:
+            return result['result']['audio']['file_id']
 
+    def send_photo(self, chat, file_handle=None, tg_id=None, caption=None):
+        """
+        Sends a photo file to the given chat
+
+        :param chat: The chat to which the file will be sent
+        :param file_handle: The file handle to the photo file that will be sent
+        :param tg_id: If the photo was already uploaded, this can be provided not to upload it again
+        :param caption: An optional caption for the photo
+
+        :returns: The uploaded file Telegram ID (tg_id), which can be later used
+        """
+        parameters = {
+            'chat_id': chat.id
+        }
+        if caption is not None:
+            parameters['caption'] = caption
+
+        # If it was uploaded before, don't upload it again
+        if tg_id is not None:
+            parameters['photo'] = tg_id
+            files = None
+
+        else:  # Otherwise, set the files that we'll upload
+            # TODO Do not assume it's .jpg
+            files = {'photo': ('photo.jpg', file_handle, 'image/jpeg')}
+
+        result = self.sendPhoto(parameters, timeout=60, files=files)
+
+        # Return the file ID if everything went okay
+        if result['ok']:
+            # -1 to return the largest (multiple sizes are returned)
+            return result['result']['photo'][-1]['file_id']
+        else:
+            print(result)
 
     # endregion
 
@@ -162,7 +186,6 @@ class Bot:
         result = self.getUpdates(params, params['timeout'])
 
         if result['ok']:
-
             # Group the entries for easier use
             chat_id_msgs = self.group_entries(result['result'])
 
@@ -179,27 +202,24 @@ class Bot:
         :param msg: The message which was on the update
         :param should_reply: Hint that determines whether we should reply to it or just answer
         """
-
         if msg.text is not None:
-            # Check the user in our database
-            self.database.check_user(msg.sender)
-
             # Check whether we should act
-            for action in self.actions:
-                should_act, data = action.should_act(self, msg, should_reply)
+            for command in self.commands:
+                should_act, data = command.should_act(self, msg, should_reply)
                 if should_act:
-                    try:
-                        action.act(data)
-                    except Exception as e:
-                        # Something baaad happened...
-                        if msg.sender.is_admin:
-                            self.send_message(msg.chat, 'oh, it was you admin, well here is the log:')
-                            self.send_message(msg.chat, traceback.format_exc())
-                        else:
-                            # TODO, this should be reported
-                            logging.error(traceback.format_exc())
+                    self.act(msg, command, data)
 
-                    break  # If we've acted, stop looking for interaction
+    def act(self, msg, command, data):
+        try:
+            command.act(data)
+        except Exception:
+            # Something bad happened...
+            if msg.sender.is_admin:
+                self.send_message(msg.chat, 'An error occurred, admin:')
+                self.send_message(msg.chat, traceback.format_exc())
+            else:
+                # TODO, this should be reported
+                logging.error(traceback.format_exc())
 
     # endregion
 
@@ -224,16 +244,11 @@ class Bot:
         Stops the bot.
         """
         self.clear_updates()
-        self.database.close()
         self.running = False
 
     # endregion
 
     # region Utils
-
-    def print_json(self, json_obj):
-        """Useful debugging method to print a formatted JSON"""
-        print(json.dumps(json_obj, sort_keys=True, indent=2, separators=(',', ': ')))
 
     def group_entries(self, entries):
         """ This function groups entries from an update event into a dictionary

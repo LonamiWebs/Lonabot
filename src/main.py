@@ -1,5 +1,5 @@
 from bot import Bot
-from tokens import load_token
+from utils.tokens import load_token
 
 
 if __name__ == "__main__":
