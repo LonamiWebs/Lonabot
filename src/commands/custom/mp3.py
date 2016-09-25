@@ -55,6 +55,11 @@ class Mp3Command(CommandBase):
 
         self.query_url = 'https://www.googleapis.com/youtube/v3/search'
 
+        # Parse the confirmation commands (/yes, /no and /cancel)
+        self.yes_re = self.parse_command('yes')
+        self.no_re = self.parse_command('no')
+        self.cancel_re = self.parse_command('cancel')
+
     def ask_next_confirmation(self, data, from_index, youtube_items):
         """Asks for confirmation on the next available video, whether the user wants it video or not.
            If no video is provided, False is returned"""
@@ -90,7 +95,7 @@ class Mp3Command(CommandBase):
             item_index, youtube_items = self.get_pending(data.sender.id)
 
             # Did the user want this video?
-            if data.parameter == '/yes':
+            if self.yes_re.match(data.parameter):
                 # Retrieve the video ID and set a valid url for later use on download
                 self.send_msg(data, 'OK, I will send you that song after I prepared it.')
                 video_id = youtube_items[item_index]['id']['videoId']
@@ -98,15 +103,18 @@ class Mp3Command(CommandBase):
                 thumbnail_url = youtube_items[item_index]['snippet']['thumbnails']['high']['url']
 
             # Did the user wanted a different video?
-            elif data.parameter == '/no':
+            elif self.no_re.match(data.parameter):
                 # + 1 because we want to ask for the next video
                 self.ask_next_confirmation(data, item_index + 1, youtube_items)
 
             # Did the user cancel the operation?
-            elif data.parameter == '/cancel':
+            elif self.cancel_re.match(data.parameter):
                 self.send_msg(data, 'OK, operation cancelled.')
+
             else:
-                self.send_msg(data, 'Sorry, command not understood! Operation cancelled.')
+                # Set pending data back, since the user didn't input our desired command
+                self.set_pending(data.sender.id, (item_index, youtube_items))
+                return
 
         # It may be an URL already, or it may be a query
         elif data.parameter.startswith('http'):

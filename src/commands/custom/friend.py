@@ -45,9 +45,10 @@ class FriendCommand(CommandBase):
             # List friends
             strings = []
             for friend_id, friend_alias in data.bot.friends.items():
-                strings.append('{}, ID={}'.format(friend_alias, friend_id))
+                strings.append('`ID={}` - {}'.format(str(friend_id).ljust(10), friend_alias))
 
-            self.send_msg(data, 'These are all my friends:\n{}'.format('\n'.join(strings)))
+            self.send_msg(data, 'These are all my {} friends:\n{}'
+                                .format(len(data.bot.friends), '\n'.join(strings)), markdown=True)
             return
 
         match = re.match(r'clear', data.parameter)

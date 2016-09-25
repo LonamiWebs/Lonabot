@@ -18,10 +18,7 @@ class CommandBase:
         self.enabled = enabled
         self.requires_admin = requires_admin
 
-        # /command@botusername parameters
-        #         ^ these parts being optional
-        self.act_regex = re.compile(r'^/{}(?:@{})?(?: (.+))?$'
-                                    .format(command, bot.username), flags=re.IGNORECASE)
+        self.act_regex = self.parse_command(command)
         self.pending = {}  # Users with pending actions
 
     # region Pending state
@@ -108,6 +105,14 @@ class CommandBase:
     # endregion
 
     # region Utilities
+
+    @staticmethod
+    def parse_command(command):
+        """Parses the command, and returns a compiled regex which fires to it"""
+        return re.compile(r'^/{}(?:@{})?(?: (.+))?$'
+                          .format(command, bot.username), flags=re.IGNORECASE)
+        # /command@botusername parameters
+        #         ^ the later parts being optional
 
     def send_msg(self, data, text, reply=False, markdown=False):
         """
