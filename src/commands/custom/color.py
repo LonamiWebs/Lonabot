@@ -354,7 +354,7 @@ html_color_names = {
 }
 
 
-def _write_IHDR(handle, width, height, bit_depth=8, color_type=''):
+def _write_IHDR(handle, width, height, bit_depth, color_type):
     """Writes the IHDR chunk, defined as follows:
         [ 0] width
         [ 4] height
@@ -382,8 +382,8 @@ def _write_IHDR(handle, width, height, bit_depth=8, color_type=''):
         block.write(struct.pack('>B', bit_depth))
         block.write(struct.pack('>B', ct))
         block.write(struct.pack('>B', 0))  # zlib compression
-        block.write(struct.pack('>B', 0))  # adaptative filter type
-        block.write(struct.pack('>B', 0))  # not interlaced
+        block.write(struct.pack('>B', 0))  # Adaptive filter type
+        block.write(struct.pack('>B', 0))  # Not interlaced
 
         # Position equals the size of the block (omitting the header)
         handle.write(struct.pack('>I', block.tell()))
@@ -409,7 +409,6 @@ def _write_IDAT(handle, data, width, height, color_type, default_pixel=None):
         else:
             raise ValueError('Non-supported color_type given: ' + color_type)
 
-    # TODO Not sure why irregular blocks don't work properly, it generates strange things
     with BytesIO() as block:
         if not color_type:
             # Gray-scale, 1 byte per pixel
@@ -442,6 +441,7 @@ def _write_IDAT(handle, data, width, height, color_type, default_pixel=None):
 
             # Default pixel when not enough rows were provided
             for i in range(len(data), height):
+                block.write(b'\0')  # No filter
                 for j in range(width):
                     block.write(default_pixel)
         else:
@@ -481,14 +481,14 @@ def save_png(handle, data, width=None, height=None,
     """
     if height is None:
         height = len(data)
-    elif height <= 0:
-        raise ValueError('The height must be a value greater than 0')
+    if height <= 0:
+        raise ValueError('The height must be a value greater than 0.')
 
     if width is None:
         # Irregular dimensions are allowed
         width = max(len(row) for row in data)
-    elif width <= 0:
-        raise ValueError('The width must be a value greater than 0')
+    if width <= 0:
+        raise ValueError('The width must be a value greater than 0.')
 
     if color_type is None:
         # Infer the color type from the first datum
@@ -579,16 +579,12 @@ class ColorCommand(CommandBase):
     @staticmethod
     def send_rgb(data, color):
         with TemporaryFile('w+b') as f:
-            # TODO So, irregular dimensions v (if not match with width height) cause weird bugs
-            # So that's probably the problem with the width and height
-            # Maybe it gets overrode
-            # And does weird things
             size = 256
-            color_data = [[color for j in range(size)] for i in range(size)]
             save_png(f,
-                     data=color_data,
+                     data=[[]],
                      width=size,
                      height=size,
-                     color_type='c')
+                     color_type='c',
+                     default_pixel=color)
             f.seek(0)
             data.bot.send_photo(data.chat, file_handle=f)
