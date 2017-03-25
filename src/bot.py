@@ -113,7 +113,7 @@ class Bot:
 
     # region Telegram API made easy
 
-    def send_message(self, chat, text, reply_to_id=None, markdown=False):
+    def send_message(self, chat, text, reply_to_id=None, markdown=False, disable_web_preview=False):
         """
         Sends a message
         :param chat: The chat to where the message will be sent
@@ -136,6 +136,9 @@ class Bot:
 
         if markdown:
             msg['parse_mode'] = 'markdown'
+
+        if disable_web_preview:
+            msg['disable_web_page_preview'] = 'true'
 
         self.sendMessage(msg)
 
