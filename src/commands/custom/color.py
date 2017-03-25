@@ -193,7 +193,8 @@ class ColorCommand(CommandBase):
                 hex_color = ''.join(h+h for h in hex_color)
 
             color = color_to_rgb(int(hex_color, base=16))
-
+            self.send_rgb(data, color)
+            return
 
         match = re.match(r'rgb\s*\(\s*(\d+%?)\s*,\s*(\d+%?)\s*,\s*(\d+%?)\s*\)', data.parameter)
         if match:
@@ -208,10 +209,14 @@ class ColorCommand(CommandBase):
             if any(v < 0 or v > 255 for v in color):
                 data.bot.send_message(data.chat, 'Invalid color range given.')
                 return
-        else:
-            self.show_invalid_syntax(data)
+
+            self.send_rgb(data, color)
             return
 
+        self.show_invalid_syntax(data)
+
+    @staticmethod
+    def send_rgb(data, color):
         with TemporaryFile('w+b') as f:
             # TODO So, irregular dimensions v (if not match with width height) cause weird bugs
             # So that's probably the problem with the width and height
