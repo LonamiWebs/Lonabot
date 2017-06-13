@@ -1,3 +1,0 @@
-Drop in this folder your tokens.
-The tokens should be plain text files with .token extension and use UTF-8 format
-It's recommended to leave an empty line at the end, although it may not be necessary
