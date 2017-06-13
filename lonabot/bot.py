@@ -2,11 +2,18 @@
 # -*- coding: utf-8 -*-
 #
 # Reminder bot
-from telegram.ext import Updater, CommandHandler
-from telegram.ext import MessageHandler, Filters
-from telegram import ParseMode
+from telegram import (
+    ParseMode, InlineQueryResultArticle, InputTextMessageContent,
+    ReplyKeyboardMarkup, ReplyKeyboardRemove
+)
+
+from telegram.ext import (
+    Updater, CommandHandler, InlineQueryHandler, MessageHandler, Filters,
+    ConversationHandler, RegexHandler
+)
 
 from datetime import datetime, timedelta, time
+from uuid import uuid4
 import logging
 import os
 import re
@@ -15,6 +22,19 @@ import re
 # Constants
 MAX_REMINDERS = 10
 MAX_DATA_PER_REMINDER_BYTES = 256
+INLINE_REMINDER_LIFE = timedelta(seconds=30)
+
+
+class InlineReminder:
+    def __init__(self, remindin, remindat):
+        self._created = datetime.now()
+        # Should be either None or tuples of (due, text)
+        self.remindin = remindin
+        self.remindat = remindat
+
+    def should_keep(self, now):
+        return now - self._created < INLINE_REMINDER_LIFE
+
 
 REMINDIN_RE = re.compile(r'''
 ^
@@ -84,6 +104,16 @@ REMINDAT_RE = re.compile(r'''
 )\b''', re.IGNORECASE | re.VERBOSE)
 
 
+# Temporary variables
+inline_reminders = {}
+def cleanup_inline_reminders():
+    # TODO Something like "last check" not to clean so often i.e. clean when a reminder fires but if two fire at the same time the "last check" will help
+    global inline_reminders
+    now = datetime.now()
+    inline_reminders = {k: v for k, v in inline_reminders.items()
+                             if v.should_keep(now)}
+
+
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
@@ -150,6 +180,9 @@ def create_reminder(bot, job_queue, chat_id, due, text):
     """Creates a reminder for 'chat_id' with the desired 'text'
        and queues its message, or does nothing if the quota exceeded.
     """
+    if due is None:
+        return  # Ignore
+
     directory = get_user_dir(bot, chat_id)
     if len(os.listdir(directory)) >= MAX_REMINDERS or \
             len(text.encode('utf-8')) > MAX_DATA_PER_REMINDER_BYTES:
@@ -212,8 +245,29 @@ def load_jobs(bot, job_queue):
 
 
 # Commands
-def start(bot, update):
-    update.message.reply_text('''Hi! I'm {} and running in "reminder" mode.
+def start(bot, update, job_queue):
+    global inline_reminders
+    try:
+        ir = inline_reminders.pop(update.message.from_user.id)
+        if not ir.remindin and not ir.remindat:
+            raise ValueError()
+
+        if ir.remindin and ir.remindat:
+            update.message.reply_text(
+                'Should I remind you "at" or "in"?',
+                reply_markup=ReplyKeyboardMarkup(
+                    [['At', 'In'], ['/cancel']], one_time_keyboard=True
+                )
+            )
+            inline_reminders[update.message.from_user.id] = ir
+            return 0  # 0 is the only conversation handler set
+        else:
+            due, text = ir.remindin if ir.remindin else ir.remindat
+            create_reminder(bot, job_queue, update.message.chat_id, due, text)
+
+    except (ValueError, KeyError) as e:
+        update.message.reply_text(f'''
+Hi! I'm {bot.first_name.title()} and running in "reminder" mode.
 
 You can set reminders by using:
 `/remindat 17:05 Optional text`
@@ -222,12 +276,12 @@ You can set reminders by using:
 Or list those you have by using:
 `/status`
 
-Everyone is allowed to use {}KB per reminder, and {} reminders max. No more!
+Everyone is allowed to use {MAX_DATA_PER_REMINDER_BYTES / 1024}KB per reminder, and {MAX_REMINDERS} reminders max. No more!
 
-Made with love by @Lonami and hosted by Richard ❤️'''
-    .format(bot.first_name.title(),
-            MAX_DATA_PER_REMINDER_BYTES / 1024, MAX_REMINDERS),
-    parse_mode=ParseMode.MARKDOWN)
+Made with love by @Lonami and hosted by Richard ❤️
+'''.strip(), parse_mode=ParseMode.MARKDOWN)
+
+    return ConversationHandler.END
 
 
 def restart(bot, update):
@@ -269,21 +323,21 @@ def clear(bot, update, args, job_queue):
     else:
         update.message.reply_text(
             '"{}" is not what I asked you to send xP'.format(args[0]))
-        
 
 
-def remindin(bot, update, args, job_queue):
-    if not args:
-        update.message.reply_text('In when? :p')
-        return
-
-    args = ' '.join(args)
-    m = REMINDIN_RE.search(args)
+def getremindin(text, update=None):
+    """If 'update' is not None, the bot will reply.
+       If the parsing succeeds, (due, text) will be returned.
+       If the parsing fails, None will be returned.
+    """
+    m = REMINDIN_RE.search(text)
     if m is None:
-        update.message.reply_text(
-            'Not sure what time you meant that to be! :s')
+        if update:
+            update.message.reply_text(
+                'Not sure what time you meant that to be! :s'
+            )
         return
-    
+
     if m.group(1):
         due = parsehour(m.group(1), reverse=True)
 
@@ -296,25 +350,36 @@ def remindin(bot, update, args, job_queue):
                 'd': 86400}.get(unit, 60)
 
     else:
-        update.message.reply_text('Darn, my regex broke >.<')
+        if update:
+            update.message.reply_text('Darn, my regex broke >.<')
         return
 
     due = datetime.now() + timedelta(seconds=due)
-    text = args[m.end():].strip()
+    text = text[m.end():].strip()
+    return due, text
 
-    create_reminder(bot, job_queue, update.message.chat_id, due, text)
 
-
-def remindat(bot, update, args, job_queue):
+def remindin(bot, update, args, job_queue):
     if not args:
-        update.message.reply_text('At what time? :p')
+        update.message.reply_text('In when? :p')
         return
 
-    args = ' '.join(args)
-    m = REMINDAT_RE.search(args)
+    r_in = getremindin(' '.join(args), update)
+    if r_in:
+        create_reminder(bot, job_queue, update.message.chat_id, r_in[0], r_in[1])
+
+
+def getremindat(text, update=None):
+    """If 'update' is not None, the bot will reply.
+       If the parsing succeeds, (due, text) will be returned.
+       If the parsing fails, (None, None) will be returned.
+    """
+    m = REMINDAT_RE.search(text)
     if m is None:
-        update.message.reply_text(
-            'Not sure what time you meant that to be! :s')
+        if update:
+            update.message.reply_text(
+                'Not sure what time you meant that to be! :s'
+            )
         return
 
     if m.group(1):
@@ -323,7 +388,8 @@ def remindat(bot, update, args, job_queue):
             due += 43200  # 12h * 60m * 60s
 
     else:
-        update.message.reply_text('Darn, my regex broke >.<')
+        if update:
+            update.message.reply_text('Darn, my regex broke >.<')
         return
 
     m, s = divmod(due, 60)
@@ -337,11 +403,76 @@ def remindat(bot, update, args, job_queue):
         due = datetime(now.year, now.month, now.day + add_days,
                        due.hour, due.minute, due.second)
 
-        text = ' '.join(args[1:])
-        create_reminder(bot, job_queue, update.message.chat_id, due, text)
+        text = text[m.end():].strip()
+        return due, text
     except ValueError:
-        update.message.reply_text('Some values are out of bounds :o')
+        if update:
+            update.message.reply_text('Some values are out of bounds :o')
+        return None
+
+
+def remindat(bot, update, args, job_queue):
+    if not args:
+        update.message.reply_text('At what time? :p')
         return
+
+    r_at = getremindat(' '.join(args), update)
+    if r_at:
+        create_reminder(bot, job_queue, update.message.chat_id, r_at[0], r_at[1])
+
+
+def remindinline(bot, update):
+    query = update.inline_query.query
+
+    remindin = getremindin(query)
+    remindat = getremindat(query)
+    if remindin or remindat:
+        global inline_reminders
+        inline_reminders[update.inline_query.from_user.id] = \
+            InlineReminder(remindin, remindat)
+        update.inline_query.answer([],
+                                   cache_time=0,
+                                   switch_pm_text='Set reminder',
+                                   switch_pm_parameter='stub')
+    else:
+        update.inline_query.answer([InlineQueryResultArticle(
+            id=uuid4(),
+            title='Time not recognised >.<',
+            input_message_content=InputTextMessageContent(
+                "Beep boop. Stub! I couldn't recognise the time you typed :S"
+            )
+        )])
+
+
+def in_or_at(bot, update, job_queue):
+    global inline_reminders
+    text = update.message.text
+    try:
+        ir = inline_reminders.pop(update.message.from_user.id)
+        if text == 'At':
+            due, text = ir.remindat
+            create_reminder(bot, job_queue, update.message.chat_id, due, text)
+        elif text == 'In':
+            due, text = ir.remindin
+            create_reminder(bot, job_queue, update.message.chat_id, due, text)
+        else:
+            update.message.reply_text('Unknown option! Reminder forgotten >3<')
+
+    except KeyError as e:
+        update.message.reply_text(
+            'I am really sorry, I forgot what your reminder was about :c'
+        )
+
+    return ConversationHandler.END
+
+
+def cancel(bot, update):
+    user = update.message.from_user
+    update.message.reply_text('Remainder cancelled, changed your mind? ;)',
+                              reply_markup=ReplyKeyboardRemove())
+
+    return ConversationHandler.END
+
 
 
 def status(bot, update):
@@ -366,13 +497,10 @@ def status(bot, update):
 
 
 if __name__ == '__main__':
-    token = '328334925:AAFuWZSNZJWP4QWyJM6q7iub5vp-A_wPDnI'
+    token = ''
     updater = Updater(token)
 
     dp = updater.dispatcher
-    dp.add_handler(CommandHandler(
-        'start', start
-    ))
     dp.add_handler(CommandHandler(
         'restart', restart
     ))
@@ -387,6 +515,21 @@ if __name__ == '__main__':
     ))
     dp.add_handler(CommandHandler(
         'remindat', remindat, pass_args=True, pass_job_queue=True
+    ))
+    dp.add_handler(InlineQueryHandler(
+        remindinline
+    ))
+    dp.add_handler(ConversationHandler(
+        entry_points=[CommandHandler(
+            # Start can start a normal conversation or via inline
+            'start', start, pass_job_queue=True
+        )],
+
+        states={
+            0: [RegexHandler('^(In|At)$', in_or_at, pass_job_queue=True)],
+        },
+
+        fallbacks=[CommandHandler('cancel', cancel)]
     ))
 
     updater.bot.getMe()
