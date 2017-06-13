@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 import os
 
 from constants import *
+from inlinereminder import InlineReminder
 
 
 def from_admin(update):
@@ -95,6 +96,7 @@ def notify(bot, job):
 
     if os.path.isfile(reminder_file):
         os.remove(job.context['reminder_file'])
+    InlineReminder.cleanup()
 
     bot.send_message(chat_id, text=text if text else 'Time is over!')
 

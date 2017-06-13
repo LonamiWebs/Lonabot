@@ -5,6 +5,7 @@ from constants import INLINE_REMINDER_LIFE
 
 class InlineReminder:
     inline_reminders = {}
+    last_cleanup = datetime.now()
 
     def __init__(self, remindin, remindat):
         self._created = datetime.now()
@@ -15,15 +16,19 @@ class InlineReminder:
     def should_keep(self, now):
         return now - self._created < INLINE_REMINDER_LIFE
 
+    @staticmethod
     def add(k, v):
         InlineReminder.inline_reminders[k] = v
 
+    @staticmethod
     def pop(k):
         return InlineReminder.inline_reminders.pop(k)
 
+    @staticmethod
     def cleanup():
-        # TODO Something like "last check" not to clean so often i.e. clean when a reminder fires but if two fire at the same time the "last check" will help.
-        # Also actually call this method.
         now = datetime.now()
+        if now - last_cleanup < INLINE_REMINDER_LIFE:
+            return
+
         InlineReminder.inline_reminders = \
             {k: v for k, v in inline_reminders.items() if v.should_keep(now)}
