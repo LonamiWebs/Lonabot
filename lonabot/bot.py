@@ -107,7 +107,8 @@ REMINDAT_RE = re.compile(r'''
 # Temporary variables
 inline_reminders = {}
 def cleanup_inline_reminders():
-    # TODO Something like "last check" not to clean so often i.e. clean when a reminder fires but if two fire at the same time the "last check" will help
+    # TODO Something like "last check" not to clean so often i.e. clean when a reminder fires but if two fire at the same time the "last check" will help.
+    # Also actually call this method.
     global inline_reminders
     now = datetime.now()
     inline_reminders = {k: v for k, v in inline_reminders.items()
@@ -374,17 +375,17 @@ def getremindat(text, update=None):
        If the parsing succeeds, (due, text) will be returned.
        If the parsing fails, (None, None) will be returned.
     """
-    m = REMINDAT_RE.search(text)
-    if m is None:
+    match = REMINDAT_RE.search(text)
+    if match is None:
         if update:
             update.message.reply_text(
                 'Not sure what time you meant that to be! :s'
             )
         return
 
-    if m.group(1):
-        due = parsehour(m.group(1), reverse=False)
-        if m.group(2) is not None:  # PM
+    if match.group(1):
+        due = parsehour(match.group(1), reverse=False)
+        if match.group(2) is not None:  # PM
             due += 43200  # 12h * 60m * 60s
 
     else:
@@ -403,7 +404,7 @@ def getremindat(text, update=None):
         due = datetime(now.year, now.month, now.day + add_days,
                        due.hour, due.minute, due.second)
 
-        text = text[m.end():].strip()
+        text = text[match.end():].strip()
         return due, text
     except ValueError:
         if update:
@@ -497,7 +498,8 @@ def status(bot, update):
 
 
 if __name__ == '__main__':
-    token = ''
+    with open('token', encoding='utf-8') as f:
+        token = f.read().strip()
     updater = Updater(token)
 
     dp = updater.dispatcher
