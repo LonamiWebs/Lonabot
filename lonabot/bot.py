@@ -18,7 +18,7 @@ if __name__ == '__main__':
 
     logger = logging.getLogger(__name__)
 
-    with open('token', encoding='utf-8') as f:
+    with open('bot.token', encoding='utf-8') as f:
         token = f.read().strip()
     updater = Updater(token)
 
