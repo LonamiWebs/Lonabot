@@ -1,3 +1,5 @@
+from random import shuffle
+
 
 def strike(text):
     return '\u0336'.join(text) + '\u0336'
@@ -16,6 +18,17 @@ def aesthethics(text):
     aesthethics = r''' ！＂＃＄％＆＇（）＊＋，－．／０１２３４５６７８９：；＜＝＞？＠ＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ［＼］＾＿｀ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚ｛｜｝～'''
     """
     return ''.join(c if c < '!' or c > '~' else chr(ord(c) + 65281-33) for c in text)
+
+
+def scramble(text):
+    words = text.split()
+    for i in range(len(words)):
+        w = words[i]
+        if len(w) > 3:
+            mid = list(w[1:-1])
+            shuffle(mid)
+            words[i] = w[0] + ''.join(mid) + w[-1]
+    return ' '.join(words)
 
 
 def enumerate_modify(text):
@@ -58,6 +71,8 @@ def get_all(text):
         return
     yield 'Strikethrough', strike(text)
     yield 'ａｅｓｔｈｅｔｈｉｃｓ．', aesthethics(text)
+    yield 'Hmuan Mnid Pweor', scramble(text)  # youtu.be/GWedYV-D_tg
+
     for name, result in zip(['Bold', 'Bold Italics', 'Script', 'Gothic',
                                'Sans Serif', 'Sans Serif Bold',
                                'Sans Serif Italics', 'Sans Serif Bold Italics',
