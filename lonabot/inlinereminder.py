@@ -27,8 +27,9 @@ class InlineReminder:
     @staticmethod
     def cleanup():
         now = datetime.now()
-        if now - last_cleanup < INLINE_REMINDER_LIFE:
+        if now - InlineReminder.last_cleanup < INLINE_REMINDER_LIFE:
             return
 
         InlineReminder.inline_reminders = \
-            {k: v for k, v in inline_reminders.items() if v.should_keep(now)}
+            {k: v for k, v in InlineReminder.inline_reminders.items()
+                           if v.should_keep(now)}
