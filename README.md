@@ -4,6 +4,7 @@ Several Python bots for Telegram, using the well-stabilised API
 
 ## Current bots
 * [@lonabot](https://t.me/lonabot), allows you to set reminders.
+* [@textobot](https://t.me/textobot), allows you to alter your texts.
 
 ## Notes
 You should use these bots as long as you trust the maintainer of the server,

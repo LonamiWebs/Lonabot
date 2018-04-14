@@ -17,7 +17,11 @@ def aesthethics(text):
     """ @VapourwaveBot
     aesthethics = r''' ！＂＃＄％＆＇（）＊＋，－．／０１２３４５６７８９：；＜＝＞？＠ＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ［＼］＾＿｀ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚ｛｜｝～'''
     """
-    return ''.join(c if c < '!' or c > '~' else chr(ord(c) + 65281-33) for c in text)
+    return ''.join(
+        ('　' if c == ' ' else c)
+        if c < '!' or c > '~' else
+            chr(ord(c) + 65281-33) for c in text
+    )
 
 
 def scramble(text):
@@ -29,6 +33,26 @@ def scramble(text):
             shuffle(mid)
             words[i] = w[0] + ''.join(mid) + w[-1]
     return ' '.join(words)
+
+
+def rev(text):
+    d = {
+        '(': ')',
+        ')': '(',
+        '[': ']',
+        ']': '[',
+        '{': '}',
+        '}': '{',
+        '?': '¿',
+        '¿': '?',
+        '!': '¡',
+        '¡': '!',
+        '/':'\\',
+        '\\':'/',
+        '´': '`',
+        '`': '´',
+    }
+    return ''.join(d.get(c, c) for c in reversed(text))
 
 
 def enumerate_modify(text):
@@ -72,9 +96,12 @@ def get_all(text):
     yield 'Strikethrough', strike(text)
     yield 'ａｅｓｔｈｅｔｈｉｃｓ．', aesthethics(text)
     yield 'Hmuan Mnid Pweor', scramble(text)  # youtu.be/GWedYV-D_tg
+    yield '.desreveR', rev(text)
 
+    """
     for name, result in zip(['Bold', 'Bold Italics', 'Script', 'Gothic',
                                'Sans Serif', 'Sans Serif Bold',
                                'Sans Serif Italics', 'Sans Serif Bold Italics',
                                'Monospace'], enumerate_modify(text)):
         yield name, result
+    """
