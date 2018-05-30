@@ -4,8 +4,8 @@ import random
 import re
 from datetime import datetime
 
-import utils
-from constants import MAX_REMINDERS
+from . import utils
+from .constants import MAX_REMINDERS
 
 from dumbot.dumbaio import Bot
 
