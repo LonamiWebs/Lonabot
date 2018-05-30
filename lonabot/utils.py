@@ -67,6 +67,87 @@ def parse_due(due, delta):
     return int(due.timestamp() - delta), text
 
 
+def spell_digit(n):
+    return ['zero', 'one', 'two', 'three', 'four',
+            'five', 'six', 'seven', 'eight', 'nine'][n]
+
+
+def spell_ten(n):
+    return ['ten', 'twenty', 'thirty', 'forty', 'fifty',
+            'sixty', 'seventy', 'eighty', 'ninety'][n - 1]
+
+
+def spell_number(n, allow_and=True):
+    # In the range of [0..1_000_000), for now
+    if n < 0:
+        spelt = 'minus'
+        n = -n
+    else:
+        spelt = ''
+
+    add_and = False
+    if n >= 1000:
+        add_and = allow_and
+        high, n = divmod(n, 1000)
+        spelt += f' {spell_number(high, allow_and=False)} thousand'
+    if n >= 100:
+        add_and = allow_and
+        high, n = divmod(n, 100)
+        spelt += f' {spell_digit(high)} hundred'
+    if n >= 20:
+        if add_and:
+            spelt += ' and'
+            add_and = False
+        high, n = divmod(n, 10)
+        spelt += f' {spell_ten(high)}'
+    elif n >= 10:
+        if add_and:
+            spelt += ' and'
+            add_and = False
+        spelt += ' ' + [
+            'ten', 'eleven', 'twelve', 'thirteen', 'fourteen',
+            'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'
+        ][n - 10]
+        n = 0
+
+    if n or not spelt:
+        if add_and:
+            spelt += ' and'
+        spelt += ' ' + spell_digit(n)
+
+    return spelt.lstrip()
+
+
+def spell_due(due, utc_delta):
+    if utc_delta is not None:
+        due = datetime.utcfromtimestamp(due + utc_delta)
+        return f'due to {due}'
+
+    spelt = 'due in'
+    remaining = int(due - datetime.utcnow().timestamp())
+    print(remaining)
+    if remaining < 60:
+        spelt += f' {remaining} second'
+        if remaining > 1:
+            spelt += 's'
+        return spelt
+    if remaining >= 86400:
+        days, remaining = divmod(remaining, 86400)
+        spelt += f' {days} day'
+        if days > 1:
+            spelt += 's'
+    if remaining >= 3600:
+        hours, remaining = divmod(remaining, 3600)
+        spelt += f' {hours} hour'
+        if hours > 1:
+            spelt += 's'
+    mins, remaining = divmod(remaining, 60)
+    spelt += f' {mins} minute'
+    if mins > 1:
+        spelt += 's'
+    return spelt
+
+
 def large_round(number, precision):
     # e.g. large_round(11, 5) -> 10
     return round(number / precision) * precision

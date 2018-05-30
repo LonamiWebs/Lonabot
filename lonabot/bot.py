@@ -187,7 +187,38 @@ Made with love by @Lonami and hosted by Richard ❤️
                                text=f"Got it! There's a difference of "
                                     f"{delta} seconds between you and I :D")
 
-    @cmd(r'/(status|clear)')
+    @cmd(r'/status')
+    async def _status(self, update):
+        reminders = self.db.get_reminders(update.message.chat.id)
+        delta = self.db.get_time_delta(update.message.from_.id)
+        if len(reminders) == 0:
+            text = "You don't have any reminder set yet. Less work for me!"
+        elif len(reminders) == 1:
+            due, reminder = reminders[0]
+            due = utils.spell_due(due, delta)
+            if reminder:
+                text = f'You have one reminder {due}.'
+            else:
+                text = f'You have one reminder {due} for "{reminder}"'
+        else:
+            if len(reminders) == MAX_REMINDERS:
+                text = f'You are using all of your reminders:'
+            else:
+                text = f'You have {utils.spell_number(len(reminders))} ' \
+                       f'reminders:'
+
+            for i, t in enumerate(reminders, start=1):
+                due, reminder = t
+                due = utils.spell_due(due, delta)
+                if not reminder:
+                    reminder = 'no text'
+                elif len(reminder) > 40:
+                    reminder = reminder[:39] + '…'
+                text += f'\n({i}) {due}, {reminder}'
+
+        await self.sendMessage(chat_id=update.message.chat.id, text=text)
+
+    @cmd(r'/clear')
     async def _soon(self, update):
         await self.sendMessage(
             chat_id=update.message.chat.id,

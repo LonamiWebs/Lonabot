@@ -83,6 +83,14 @@ class Database:
         c.close()
         return count
 
+    def get_reminders(self, chat_id):
+        c = self._cursor()
+        c.execute('SELECT Due, Text FROM Reminders WHERE ChatID = ? '
+                  'ORDER BY Due ASC', (chat_id,))
+        rows = c.fetchall()
+        c.close()
+        return rows
+
     def iter_reminders(self):
         c = self._cursor()
         c.execute('SELECT ID, Due FROM Reminders')
