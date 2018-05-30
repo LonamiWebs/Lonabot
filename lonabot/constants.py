@@ -1,0 +1,1 @@
+MAX_REMINDERS = 10
