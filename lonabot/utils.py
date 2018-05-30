@@ -24,23 +24,21 @@ def parse_delay(when):
                 i += 1
                 unit = when[i]
 
-            if re.match(r'h(our)?s?', unit):
+            if re.match(r'h(our)?s?$', unit):
                 hour += value
-            elif re.match(r'm(in(ute)?s?)?', unit):
+            elif re.match(r'm(in(ute)?s?)?$', unit):
                 mins += value
-            elif re.match(r's(ecs?)?', unit):
+            elif re.match(r's(ecs?)?$', unit):
                 secs += value
             else:
                 mins += value
                 if m.group(2):
                     # Unit next to number, but invalid, so set the text
                     when[i] = m.group(2)
-                else:
-                    # Next wasn't a valid unit so assume it's reminder text
-                    i -= 1
+                # else next wasn't a valid unit so assume it's reminder text
                 break
             i += 1
-        text = ' '.join(when[i:])
+        text = ' '.join(when[i:-1])
 
     delay = (hour * 60 + mins) * 60 + secs
     due = int(datetime.utcnow().timestamp() + delay) if delay else None
