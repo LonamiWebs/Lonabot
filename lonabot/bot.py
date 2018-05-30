@@ -198,9 +198,9 @@ Made with love by @Lonami and hosted by Richard ❤️
             due, reminder = reminders[0]
             due = utils.spell_due(due, delta)
             if reminder:
-                text = f'You have one reminder {due}.'
-            else:
                 text = f'You have one reminder {due} for "{reminder}"'
+            else:
+                text = f'You have one reminder {due}'
         else:
             if len(reminders) == MAX_REMINDERS:
                 text = f'You are using all of your reminders:'
