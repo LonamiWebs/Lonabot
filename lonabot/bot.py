@@ -58,7 +58,8 @@ class Lonabot(Bot):
             trigger = getattr(m, '_trigger', None)
             if isinstance(trigger, str):
                 self._cmd.append((
-                    re.compile(f'{trigger}(@{self.me.username})?').match, m))
+                    re.compile(f'{trigger}(@{self.me.username})?',
+                               flags=re.IGNORECASE).match, m))
 
         for reminder_id, due in self.db.iter_reminders():
             self._sched_reminder(due, reminder_id)
@@ -219,11 +220,49 @@ Made with love by @Lonami and hosted by Richard ❤️
         await self.sendMessage(chat_id=update.message.chat.id, text=text)
 
     @cmd(r'/clear')
-    async def _soon(self, update):
-        await self.sendMessage(
-            chat_id=update.message.chat.id,
-            text='Coming soon!'
-        )
+    async def _clear(self, update):
+        have = self.db.get_reminder_count(update.message.chat.id)
+        if not have:
+            shrug = b'\xf0\x9f\xa4\xb7\xe2\x80\x8d\xe2\x99\x80\xef\xb8\x8f'
+            await self.sendMessage(  # ^ haha unicode
+                chat_id=update.message.chat.id,
+                text=f'Nothing to clear {str(shrug, encoding="utf-8")}'
+            )
+            return
+
+        which = update.message.text.split(maxsplit=1)
+        if len(which) == 1:
+            await self.sendMessage(
+                chat_id=update.message.chat.id,
+                text='Please specify "all", "next" or '
+                     'the number shown in /status (no quotes!)'
+            )
+            return
+
+        which = which[1].lower()
+        if which == 'all':
+            self.db.clear_reminders(update.message.chat.id)
+            await self.sendMessage(chat_id=update.message.chat.id,
+                                   text=f'Poof {chr(128173)}! All be gone!')
+        elif which == 'next':
+            self.db.clear_nth_reminder(update.message.chat.id, 0)
+            await self.sendMessage(chat_id=update.message.chat.id,
+                                   text=f'Sayonara next reminder!')
+        else:
+            try:
+                which = int(which) - 1
+                if which < 0:
+                    raise ValueError('Out of bounds')
+
+                if self.db.clear_nth_reminder(update.message.chat.id, which):
+                    await self.sendMessage(chat_id=update.message.chat.id,
+                                           text='Got it! The reminder gone')
+                else:
+                    await self.sendMessage(chat_id=update.message.chat.id,
+                                           text="You don't have that many…")
+            except ValueError:
+                await self.sendMessage(chat_id=update.message.chat.id,
+                                       text='Er, that was not a valid number?')
 
     def _remind(self, reminder_id):
         chat_id, text = self.db.pop_reminder(reminder_id)

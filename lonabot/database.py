@@ -91,6 +91,26 @@ class Database:
         c.close()
         return rows
 
+    def clear_reminders(self, chat_id):
+        c = self._cursor()
+        c.execute('DELETE FROM Reminders WHERE ChatID = ?', (chat_id,))
+        c.close()
+        self._save()
+
+    def clear_nth_reminder(self, chat_id, n):
+        c = self._cursor()
+        c.execute('SELECT ID FROM Reminders WHERE ChatID = ? '
+                  'ORDER BY Due ASC', (chat_id,))
+        row = c.fetchone()
+        while row and n:
+            n -= 1
+            row = c.fetchone()
+        if row:
+            c.execute('DELETE FROM Reminders WHERE ID = ?', row)
+        c.close()
+        self._save()
+        return bool(row)
+
     def iter_reminders(self):
         c = self._cursor()
         c.execute('SELECT ID, Due FROM Reminders')
