@@ -83,6 +83,21 @@ class Database:
             yield row
             row = c.fetchone()
 
+    def set_time_delta(self, user_id, delta):
+        c = self._cursor()
+        c.execute(
+            'INSERT OR REPLACE INTO TimeDelta '
+            '(UserID, Delta) VALUES (?, ?)',
+            (user_id, delta)
+        )
+        c.close()
+        self._save()
+
+    def get_time_delta(self, user_id):
+        c = self._cursor()
+        c.execute('SELECT Delta FROM TimeDelta WHERE UserID = ?', (user_id,))
+        return (c.fetchone() or (None,))[0]
+
     def pop_reminder(self, reminder_id):
         c = self._cursor()
         c.execute('SELECT ChatID, Text FROM Reminders WHERE ID = ?',

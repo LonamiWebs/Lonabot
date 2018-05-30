@@ -5,7 +5,7 @@ import re
 from datetime import datetime
 
 from . import utils
-from .constants import MAX_REMINDERS
+from .constants import MAX_REMINDERS, MAX_TZ_STEP
 
 from dumbot.dumbaio import Bot
 
@@ -119,6 +119,31 @@ Made with love by @Lonami and hosted by Richard ❤️
         else:
             await self.sendMessage(chat_id=update.message.chat.id,
                                    text='What time is that?')
+
+    @cmd(r'/tz')
+    async def _tz(self, update):
+        tz = update.message.text.split(maxsplit=1)
+        if len(tz) == 1:
+            await self.sendMessage(chat_id=update.message.chat.id,
+                                   text='Please specify your current hour!')
+            return
+
+        m = re.match(r'(\d+):(\d+)', tz[1])
+        if not m:
+            await self.sendMessage(chat_id=update.message.chat.id,
+                                   text='The hour must be like /tz hh:mm')
+            return
+
+        now = datetime.utcnow()
+        now = utils.large_round(now.hour * 60 + now.minute, MAX_TZ_STEP)
+        remote = int(m.group(1)) * 60 + int(m.group(2))
+        remote = utils.large_round(remote, MAX_TZ_STEP)
+
+        delta = (remote - now) * 60
+        self.db.set_time_delta(update.message.from_.id, delta)
+        await self.sendMessage(chat_id=update.message.chat.id,
+                               text=f"Got it! There's a difference of "
+                                    f"{delta} seconds between you and I :D")
 
     @cmd(r'/(remindat|status|clear)')
     async def _soon(self, update):

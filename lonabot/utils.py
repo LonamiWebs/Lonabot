@@ -45,3 +45,8 @@ def parse_delay(when):
     delay = (hour * 60 + mins) * 60 + secs
     due = int(datetime.utcnow().timestamp() + delay) if delay else None
     return due, text
+
+
+def large_round(number, precision):
+    # e.g. large_round(11, 5) -> 10
+    return round(number / precision) * precision
