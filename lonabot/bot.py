@@ -17,6 +17,19 @@ def cmd(text):
     return decorator
 
 
+def limited(f):
+    @functools.wraps(f)
+    async def wrapped(self, update):
+        count = self.db.get_reminder_count(update.message.chat.id)
+        if count < MAX_REMINDERS:
+            await f(self, update)
+        else:
+            await self.sendMessage(chat_id=update.message.chat.id,
+                                   text='Looks like you already have enough '
+                                        'reminders… Sorry about that')
+    return wrapped
+
+
 SAY_WHAT = (
     'Say what?', "Sorry I didn't understand!", 'Uhm?', 'Need anything?',
     'What did you mean?', 'Are you trying to see all I can say?',
@@ -102,6 +115,7 @@ Everyone is allowed to use {MAX_REMINDERS} reminders max. No more!
 Made with love by @Lonami and hosted by Richard ❤️
 '''.strip(), parse_mode='markdown')
 
+    @limited
     @cmd(r'/remindin')
     async def _remindin(self, update):
         when = update.message.text.split(maxsplit=1)
@@ -120,6 +134,7 @@ Made with love by @Lonami and hosted by Richard ❤️
             await self.sendMessage(chat_id=update.message.chat.id,
                                    text='What time is that?')
 
+    @limited
     @cmd(r'/remindat')
     async def _remindat(self, update):
         delta = self.db.get_time_delta(update.message.from_.id)
