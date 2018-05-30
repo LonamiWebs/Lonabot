@@ -120,7 +120,8 @@ def spell_number(n, allow_and=True):
 
 def spell_due(due, utc_delta):
     if utc_delta is not None:
-        due = datetime.utcfromtimestamp(due + utc_delta)
+        # Looks like doing .utcfromtimestamp "subtracts" the +N local time…?
+        due = datetime.fromtimestamp(due + utc_delta)
         return f'due to {due}'
 
     spelt = 'due in'
