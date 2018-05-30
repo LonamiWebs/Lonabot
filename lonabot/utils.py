@@ -1,5 +1,5 @@
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 def parse_delay(when):
@@ -45,6 +45,26 @@ def parse_delay(when):
     delay = (hour * 60 + mins) * 60 + secs
     due = int(datetime.utcnow().timestamp() + delay) if delay else None
     return due, text
+
+
+def parse_due(due, delta):
+    m = re.match(r'(\d+)(?::(\d+))?(?::(\d+))?', due)
+    if not m:
+        return None, due
+
+    hour = int(m.group(1))
+    mins = int(m.group(2) or 0)
+    secs = int(m.group(3) or 0)
+    text = due[m.end():]
+    now = datetime.utcnow() + timedelta(seconds=delta)  # Work in local time
+    due = datetime(
+        now.year, now.month, now.day, hour, mins, secs, 0, now.tzinfo)
+
+    if due < now:
+        due += timedelta(days=1)
+
+    # But return UTC time
+    return int(due.timestamp() - delta), text
 
 
 def large_round(number, precision):

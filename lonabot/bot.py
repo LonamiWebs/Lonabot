@@ -120,6 +120,33 @@ Made with love by @Lonami and hosted by Richard ❤️
             await self.sendMessage(chat_id=update.message.chat.id,
                                    text='What time is that?')
 
+    @cmd(r'/remindat')
+    async def _remindat(self, update):
+        delta = self.db.get_time_delta(update.message.from_.id)
+        if delta is None:
+            await self.sendMessage(
+                chat_id=update.message.chat.id,
+                text="Wait! I don't know your local time. "
+                     "Please use /tz to set it first before trying again"
+            )
+            return
+
+        due = update.message.text.split(maxsplit=1)
+        if len(due) == 1:
+            await self.sendMessage(chat_id=update.message.chat.id,
+                                   text='At what time? :p')
+            return
+
+        due, text = utils.parse_due(due[1], delta)
+        if due:
+            reminder = self.db.add_reminder(update.message.chat.id, due, text)
+            self._sched_reminder(due, reminder)
+            await self.sendMessage(chat_id=update.message.chat.id,
+                                   text='Got it! Will remind you later')
+        else:
+            await self.sendMessage(chat_id=update.message.chat.id,
+                                   text='What time is that?')
+
     @cmd(r'/tz')
     async def _tz(self, update):
         tz = update.message.text.split(maxsplit=1)
@@ -145,7 +172,7 @@ Made with love by @Lonami and hosted by Richard ❤️
                                text=f"Got it! There's a difference of "
                                     f"{delta} seconds between you and I :D")
 
-    @cmd(r'/(remindat|status|clear)')
+    @cmd(r'/(status|clear)')
     async def _soon(self, update):
         await self.sendMessage(
             chat_id=update.message.chat.id,
