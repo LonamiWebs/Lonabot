@@ -2,46 +2,79 @@ import re
 from datetime import datetime, timedelta
 
 
+_UNITS_RE = re.compile(
+    r'(y(?:ears?)?'
+    r'|w(?:eeks?)?'
+    r'|d(?:ays?)?'
+    r'|h(?:ours?)?'
+    r'|m(?:in(?:ute)?s?)?'
+    r'|s(?:ecs?)?'
+    r')((?:\b|\d).*)',
+    re.IGNORECASE
+)
+
+_UNITS = {
+    'y': 31536000.0,
+    'w': 604800.0,
+    'd': 86400.0,
+    'h': 3600.0,
+    'm': 60.0,
+    's': 1.0
+}
+
+
 def parse_delay(when):
-    hour = mins = secs = 0
     m = re.match(r'(\d+):(\d+)(?::(\d+))?', when)
     if m:
+        text = when[m.end():]
         hour = int(m.group(1))
         mins = int(m.group(2))
         secs = int(m.group(3) or 0)
-        text = when[m.end():]
+        delay = (hour * 60 + mins) * 60 + secs
     else:
         # Try matching integers + possible units
         when = when.split() + ['']
+        delay = 0.0
         i = 0
         while i < len(when):
-            m = re.match(r'(\d+)(.+)?', when[i])
+            m = re.match(r'(\d+(?:\.\d+)?)(.+)?', when[i])
             if not m:
                 break
-            value = int(m.group(1))
+            value = float(m.group(1))
             unit = m.group(2)
             if not unit:
                 i += 1
                 unit = when[i]
 
-            if re.match(r'h(our)?s?$', unit):
-                hour += value
-            elif re.match(r'm(in(ute)?s?)?$', unit):
-                mins += value
-            elif re.match(r's(ecs?)?$', unit):
-                secs += value
+            n = _UNITS_RE.match(unit)
+            if n:
+                unit = n.group(1)[0].lower()
+                if unit in _UNITS:
+                    delay += value * _UNITS[unit]
+                    if n.group(2):
+                        # {unit}{number + stuff} <- may be another value
+                        when[i] = n.group(2)
+                        i -= 1
+                else:
+                    delay += value * 60.0
+                    when[i] = n.group(0)
+                    break  # {invalid unit} <- assume user's text
             else:
-                mins += value
-                if m.group(2):
-                    # Unit next to number, but invalid, so set the text
-                    when[i] = m.group(2)
-                # else next wasn't a valid unit so assume it's reminder text
+                if int(delay):
+                    # The value should belong to the user's text unless
+                    # we already have something that's not gibberish.
+                    when[i] = m.group(0)
+                else:
+                    delay += value * 60.0
+                    if m.group(2):
+                        # Assume the thing after the value is user's text
+                        when[i] = m.group(2)
                 break
+
             i += 1
         text = ' '.join(when[i:-1])
 
-    delay = (hour * 60 + mins) * 60 + secs
-    due = int(datetime.utcnow().timestamp() + delay) if delay else None
+    due = int(datetime.utcnow().timestamp() + delay) if int(delay) else None
     return due, text
 
 
