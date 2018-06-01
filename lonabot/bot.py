@@ -129,8 +129,9 @@ Made with love by @Lonami and hosted by Richard ❤️
         if due:
             reminder = self.db.add_reminder(update.message.chat.id, due, text)
             self._sched_reminder(due, reminder)
+            delay = utils.spell_due(due, prefix=False)
             await self.sendMessage(chat_id=update.message.chat.id,
-                                   text='Got it! Will remind you later')
+                                   text=f'Got it! Will remind in {delay}')
         else:
             await self.sendMessage(chat_id=update.message.chat.id,
                                    text='What time is that?')

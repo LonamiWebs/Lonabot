@@ -149,20 +149,19 @@ def spell_number(n, allow_and=True):
     return spelt.lstrip()
 
 
-def spell_due(due, utc_delta):
-    if utc_delta is not None:
+def spell_due(due, utc_delta=None, prefix=True):
+    if prefix and utc_delta is not None:
         # Looks like doing .utcfromtimestamp "subtracts" the +N local time…?
         due = datetime.fromtimestamp(due + utc_delta)
         return f'due to {due}'
 
-    spelt = 'due in'
+    spelt = 'due in' if prefix else ''
     remaining = int(due - datetime.utcnow().timestamp())
-    print(remaining)
     if remaining < 60:
         spelt += f' {remaining} second'
         if remaining > 1:
             spelt += 's'
-        return spelt
+        return spelt.lstrip()
     if remaining >= 86400:
         days, remaining = divmod(remaining, 86400)
         spelt += f' {days} day'
@@ -177,7 +176,7 @@ def spell_due(due, utc_delta):
     spelt += f' {mins} minute'
     if mins > 1:
         spelt += 's'
-    return spelt
+    return spelt.lstrip()
 
 
 def large_round(number, precision):
