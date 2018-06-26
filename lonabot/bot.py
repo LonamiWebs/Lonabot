@@ -168,14 +168,17 @@ Made with love by @Lonami and hosted by Richard ❤️
     async def _tz(self, update):
         tz = update.message.text.split(maxsplit=1)
         if len(tz) == 1:
-            await self.sendMessage(chat_id=update.message.chat.id,
-                                   text='Please specify your current hour!')
+            await self.sendMessage(
+                chat_id=update.message.chat.id,
+                text='Please specify your current time '
+                     'in the same message as the command!'
+            )
             return
 
         m = re.match(r'(\d+):(\d+)', tz[1])
         if not m:
             await self.sendMessage(chat_id=update.message.chat.id,
-                                   text='The hour must be like /tz hh:mm')
+                                   text='The time must be like /tz hh:mm')
             return
 
         now = datetime.utcnow()
