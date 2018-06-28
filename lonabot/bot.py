@@ -94,8 +94,9 @@ class Lonabot(Bot):
                 await method(update)
                 return
 
-        await self.sendMessage(chat_id=update.message.from_.id,
-                               text=random.choice(SAY_WHAT))
+        if update.message.chat.type == 'private':
+            await self.sendMessage(chat_id=update.message.from_.id,
+                                   text=random.choice(SAY_WHAT))
 
     @cmd(r'/start')
     async def _start(self, update):
