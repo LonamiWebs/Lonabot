@@ -1,37 +1,49 @@
-#!/usr/bin/env python3.6
-# -*- coding: utf-8 -*-
-#
-import logging
+import functools
+import random
+import uuid
 
-from telegram.ext import (
-    Updater, CommandHandler, InlineQueryHandler, MessageHandler, Filters,
-    ConversationHandler, RegexHandler
-)
+from dumbot.dumbot import Bot
+from .text import get_all
 
-from botcommands import *
+rand64 = functools.partial(random.randrange, -2**63, 2**63)
+seen = {}
+
+
+async def on_update(update):
+    query = update.inline_query.query
+    if not query:
+        if update.message.chat.type == 'private':
+            state = seen.get(update.message.chat.id)
+            if not state:
+                seen[update.message.chat.id] = 1
+                await bot.sendMessage(
+                    chat_id=update.message.chat.id,
+                    text='I only work inline silly. Anyway, @Lonami made '
+                         'me, and Richard hosts the server so thank him ❤️'
+                )
+            elif state == 1:
+                seen[update.message.chat.id] = 2
+                await bot.sendMessage(
+                    chat_id=update.message.chat.id,
+                    text="Hey, look, I don't have anything new to say."
+                )
+        return
+
+    await bot.answerInlineQuery(
+        inline_query_id=update.inline_query.id,
+        results=[dict(
+            type='article',
+            id=str(uuid.uuid4()),
+            title=title,
+            input_message_content=dict(message_text=text)
+        ) for title, text in get_all(query)]
+    )
 
 
 if __name__ == '__main__':
-    # Enable logging
-    logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                        level=logging.INFO)
-
-    logger = logging.getLogger(__name__)
-
-    with open('bot.token', encoding='utf-8') as f:
+    with open('bot.token') as f:
         token = f.read().strip()
-    updater = Updater(token)
 
-    dp = updater.dispatcher
-    dp.add_handler(CommandHandler(
-        'start', start
-    ))
-    dp.add_handler(InlineQueryHandler(
-        formatinline
-    ))
-    dp.add_handler(MessageHandler(
-        Filters.text, formatall
-    ))
-
-    updater.start_polling()
-    updater.idle()
+    bot = Bot(token)
+    bot.on_update = on_update
+    bot.run()
