@@ -7,7 +7,7 @@ from datetime import datetime
 from . import utils
 from .constants import MAX_REMINDERS, MAX_TZ_STEP
 
-from dumbot.dumbaio import Bot
+from dumbot.dumbot import Bot
 
 
 def cmd(text):
@@ -39,18 +39,13 @@ SAY_WHAT = (
 
 
 class Lonabot(Bot):
-    # Making Dumbot friendlier
     def __init__(self, token, db):
         super().__init__(token, timeout=10 * 60)
-        self._running = False
-        self._updates_loop = None
-        self._last_id = 0
         self._cmd = []
         self.me = None
         self.db = db
 
-    async def start(self):
-        self._running = True
+    async def init(self):
         self.me = await self.getMe()
         self._cmd.clear()
         for m in dir(self):
@@ -64,28 +59,7 @@ class Lonabot(Bot):
         for reminder_id, due in self.db.iter_reminders():
             self._sched_reminder(due, reminder_id)
 
-        self._updates_loop = asyncio.ensure_future(
-            self._updates_loop_impl())
-
-    def stop(self):
-        self._running = False
-        if self._updates_loop:
-            self._updates_loop.cancel()
-            self._updates_loop = None
-
-    async def _updates_loop_impl(self):
-        while self._running:
-            updates = await self.getUpdates(
-                offset=self._last_id + 1, timeout=self.timeout)
-            if not updates.ok or not updates.data:
-                continue
-
-            self._last_id = updates.data[-1].update_id
-            for update in updates.data:
-                asyncio.ensure_future(self._on_update(update))
-
-    # Actual methods we'll be using
-    async def _on_update(self, update):
+    async def on_update(self, update):
         if not update.message.text:
             return
 
