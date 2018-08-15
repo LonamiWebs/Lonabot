@@ -4,10 +4,9 @@ import random
 import re
 from datetime import datetime
 
+from dumbot import Bot
 from . import utils
 from .constants import MAX_REMINDERS, MAX_TZ_STEP
-
-from dumbot.dumbot import Bot
 
 
 def cmd(text):

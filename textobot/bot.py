@@ -2,7 +2,7 @@ import functools
 import random
 import uuid
 
-from dumbot.dumbot import Bot
+from dumbot import Bot
 from .text import get_all
 
 rand64 = functools.partial(random.randrange, -2**63, 2**63)
@@ -38,12 +38,3 @@ async def on_update(update):
             input_message_content=dict(message_text=text)
         ) for title, text in get_all(query)]
     )
-
-
-if __name__ == '__main__':
-    with open('bot.token') as f:
-        token = f.read().strip()
-
-    bot = Bot(token)
-    bot.on_update = on_update
-    bot.run()
