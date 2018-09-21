@@ -7,6 +7,7 @@ from .text import get_all
 
 rand64 = functools.partial(random.randrange, -2**63, 2**63)
 seen = {}
+bot = None
 
 
 async def on_update(update):
