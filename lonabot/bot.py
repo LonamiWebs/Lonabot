@@ -41,6 +41,7 @@ class Lonabot(Bot):
     def __init__(self, token, db):
         super().__init__(token, timeout=10 * 60)
         self._cmd = []
+        self._half_cmd = {}
         self.me = None
         self.db = db
 
@@ -59,6 +60,7 @@ class Lonabot(Bot):
             self._sched_reminder(due, reminder_id)
 
     async def on_update(self, update):
+        at = self._half_cmd.pop(update.message.from_.id, None)
         if not update.message.text:
             return
 
@@ -67,7 +69,14 @@ class Lonabot(Bot):
                 await method(update)
                 return
 
-        if update.message.chat.type == 'private':
+        if at is not None:
+            if at:
+                update.message.text = f'/remindat {update.message.text}'
+                await self._remindat(update)
+            else:
+                update.message.text = f'/remindin {update.message.text}'
+                await self._remindin(update)
+        elif update.message.chat.type == 'private':
             await self.sendMessage(chat_id=update.message.from_.id,
                                    text=random.choice(SAY_WHAT))
 
@@ -95,6 +104,7 @@ Made with love by @Lonami and hosted by Richard ❤️
     async def _remindin(self, update):
         when = update.message.text.split(maxsplit=1)
         if len(when) == 1:
+            self._half_cmd[update.message.chat.id] = False
             await self.sendMessage(chat_id=update.message.chat.id,
                                    text='In when? :p')
             return
@@ -124,6 +134,7 @@ Made with love by @Lonami and hosted by Richard ❤️
 
         due = update.message.text.split(maxsplit=1)
         if len(due) == 1:
+            self._half_cmd[update.message.chat.id] = True
             await self.sendMessage(chat_id=update.message.chat.id,
                                    text='At what time? :p')
             return
