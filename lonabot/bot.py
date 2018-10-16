@@ -53,7 +53,7 @@ class Lonabot(Bot):
             trigger = getattr(m, '_trigger', None)
             if isinstance(trigger, str):
                 self._cmd.append((
-                    re.compile(f'{trigger}(@{self.me.username})?',
+                    re.compile(f'{trigger}(@{self.me.username}|[^@]|$)',
                                flags=re.IGNORECASE).match, m))
 
         for reminder_id, due in self.db.iter_reminders():
