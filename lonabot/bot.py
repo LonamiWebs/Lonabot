@@ -109,13 +109,14 @@ Made with love by @Lonami and hosted by Richard ❤️
                                    text='In when? :p')
             return
 
-        due, text = utils.parse_delay(when[1])
-        if due:
+        delay, text = utils.parse_delay(when[1])
+        if delay:
+            due = int(datetime.utcnow().timestamp() + delay)
             reminder = self.db.add_reminder(update.message.chat.id, due, text)
             self._sched_reminder(due, reminder)
-            delay = utils.spell_due(due, prefix=False)
+            spelt = utils.spell_delay(delay, prefix=False)
             await self.sendMessage(chat_id=update.message.chat.id,
-                                   text=f'Got it! Will remind in {delay}')
+                                   text=f'Got it! Will remind in {spelt}')
         else:
             await self.sendMessage(chat_id=update.message.chat.id,
                                    text='What time is that?')

@@ -74,8 +74,7 @@ def parse_delay(when):
             i += 1
         text = ' '.join(when[i:-1])
 
-    due = int(datetime.utcnow().timestamp() + delay) if int(delay) else None
-    return due, text
+    return int(delay), text
 
 
 def parse_due(due, delta):
@@ -155,8 +154,11 @@ def spell_due(due, utc_delta=None, prefix=True):
         due = datetime.fromtimestamp(due + utc_delta)
         return f'due to {due}'
 
+    return spell_delay(int(due - datetime.utcnow().timestamp()), prefix=prefix)
+
+
+def spell_delay(remaining, prefix=True):
     spelt = 'due in' if prefix else ''
-    remaining = int(due - datetime.utcnow().timestamp())
     if remaining < 60:
         spelt += f' {remaining} second'
         if remaining > 1:
