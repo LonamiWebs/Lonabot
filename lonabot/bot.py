@@ -112,7 +112,7 @@ Made with love by @Lonami and hosted by Richard ❤️
         delay, text = utils.parse_delay(when[1])
         if delay:
             due = int(datetime.utcnow().timestamp() + delay)
-            reminder = self.db.add_reminder(update.message.chat.id, due, text)
+            reminder = self.db.add_reminder(update, due, text)
             self._sched_reminder(due, reminder)
             spelt = utils.spell_delay(delay, prefix=False)
             await self.sendMessage(chat_id=update.message.chat.id,
@@ -142,7 +142,7 @@ Made with love by @Lonami and hosted by Richard ❤️
 
         due, text = utils.parse_due(due[1], delta)
         if due:
-            reminder = self.db.add_reminder(update.message.chat.id, due, text)
+            reminder = self.db.add_reminder(update, due, text)
             self._sched_reminder(due, reminder)
             await self.sendMessage(chat_id=update.message.chat.id,
                                    text='Got it! Will remind you later')
@@ -246,7 +246,7 @@ Made with love by @Lonami and hosted by Richard ❤️
 
                 if self.db.clear_nth_reminder(update.message.chat.id, which):
                     await self.sendMessage(chat_id=update.message.chat.id,
-                                           text='Got it! The reminder gone')
+                                           text='Got it! The reminder is gone')
                 else:
                     await self.sendMessage(chat_id=update.message.chat.id,
                                            text="You don't have that many…")
@@ -257,7 +257,8 @@ Made with love by @Lonami and hosted by Richard ❤️
     def _remind(self, reminder_id):
         chat_id, text = self.db.pop_reminder(reminder_id)
         if chat_id:
-            asyncio.ensure_future(self.sendMessage(chat_id=chat_id, text=text))
+            asyncio.ensure_future(self.sendMessage(chat_id=chat_id, text=text,
+                                                   parse_mode='html'))
 
     def _sched_reminder(self, due, reminder_id):
         delta = asyncio.get_event_loop().time() - datetime.utcnow().timestamp()

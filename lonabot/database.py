@@ -1,3 +1,4 @@
+import html
 import sqlite3
 import threading
 
@@ -63,12 +64,20 @@ class Database:
     def _upgrade_database(self, old):
         pass
 
-    def add_reminder(self, chat_id, due, text):
+    def add_reminder(self, update, due, text):
         c = self._cursor()
+        text = html.escape(text)
+        if update.message.chat.type != 'private':
+            text = '<a href="tg://user?id={}">{}</a>: {}'.format(
+                update.message.from_.id or 0,
+                update.message.from_.first_name or '?',
+                text
+            )
+
         c.execute(
             'INSERT INTO Reminders '
             '(ChatID, Due, Text) VALUES (?, ?, ?)',
-            (chat_id, due, text)
+            (update.message.chat.id, due, text)
         )
         new_id = c.lastrowid
         c.close()
