@@ -161,23 +161,30 @@ def spell_delay(remaining, prefix=True):
     spelt = 'due in' if prefix else ''
     if remaining < 60:
         spelt += f' {remaining} second'
-        if remaining > 1:
+        if remaining != 1:
             spelt += 's'
         return spelt.lstrip()
+
+    written = False
     if remaining >= 86400:
         days, remaining = divmod(remaining, 86400)
         spelt += f' {days} day'
-        if days > 1:
+        written = True
+        if days != 1:
             spelt += 's'
     if remaining >= 3600:
         hours, remaining = divmod(remaining, 3600)
         spelt += f' {hours} hour'
-        if hours > 1:
+        written = True
+        if hours != 1:
             spelt += 's'
+
     mins, remaining = divmod(remaining, 60)
-    spelt += f' {mins} minute'
-    if mins > 1:
-        spelt += 's'
+    if mins or not written:
+        spelt += f' {mins} minute'
+        if mins != 1:
+            spelt += 's'
+
     return spelt.lstrip()
 
 
