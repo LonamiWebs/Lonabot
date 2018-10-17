@@ -1,6 +1,6 @@
+import calendar
 import re
 from datetime import datetime, timedelta
-
 
 _UNITS_RE = re.compile(
     r'(y(?:ears?)?'
@@ -22,9 +22,26 @@ _UNITS = {
     's': 1.0
 }
 
+_DELAY_PARSE = re.compile(r'(\d+):(\d+)(?::(\d+))?')
+
+_DUE_PARSE = re.compile(r'''
+    (?:
+        (\d+)       # day
+        (?:
+            /(\d+)  # month
+            (?:     # year
+                /(\d+)
+            )?
+        )?
+        \s+
+    )?
+    (\d+)        # hours
+    (?::(\d+))?  # minutes
+    (?::(\d+))?  # seconds''', re.VERBOSE)
+
 
 def parse_delay(when):
-    m = re.match(r'(\d+):(\d+)(?::(\d+))?', when)
+    m = _DELAY_PARSE.match(when)
     if m:
         text = when[m.end():]
         hour = int(m.group(1))
@@ -78,22 +95,29 @@ def parse_delay(when):
 
 
 def parse_due(due, delta):
-    m = re.match(r'(\d+)(?::(\d+))?(?::(\d+))?', due)
+    m = _DUE_PARSE.match(due)
     if not m:
         return None, due
 
-    hour = int(m.group(1))
-    mins = int(m.group(2) or 0)
-    secs = int(m.group(3) or 0)
+    day, month, year, hour, mins, sec = (int(x or 0) for x in m.groups())
     text = due[m.end():]
-    now = datetime.utcnow() + timedelta(seconds=delta)  # Work in local time
+
+    # Work in local time...
+    now = datetime.utcnow() + timedelta(seconds=delta)
     due = datetime(
-        now.year, now.month, now.day, hour, mins, secs, 0, now.tzinfo)
+        year or now.year, month or now.month, day or now.day,
+        hour, mins, sec, 0, now.tzinfo
+    )
 
     if due < now:
-        due += timedelta(days=1)
+        # Reasoning: if the user passed a day but the due time
+        # is below the current time, we assume they meant for
+        # the next month. If no month was specified, then only
+        # hours were given, so it might be for the next day.
+        days_in_month = calendar.monthrange(due.year, due.month)[1]
+        due += timedelta(days=days_in_month if day else 1)
 
-    # But return UTC time
+    # ...but return UTC time
     return int(due.timestamp() - delta), text
 
 

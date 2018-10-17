@@ -88,8 +88,9 @@ class Lonabot(Bot):
 Hi! I'm {self.me.first_name.title()} and running in "reminder" mode.
 
 You can set reminders by using:
-`/remindat 17:05 Optional text`
 `/remindin 1h 5m Optional text`
+`/remindat 17:05 Optional text`
+`/remindat 17/11/2020 20:00 Optional text`
 
 Or list those you have by using:
 `/status`
@@ -140,7 +141,17 @@ Made with love by @Lonami and hosted by Richard ❤️
                                    text='At what time? :p')
             return
 
-        due, text = utils.parse_due(due[1], delta)
+        try:
+            due, text = utils.parse_due(due[1], delta)
+        except ValueError:
+            await self.sendMessage(
+                chat_id=update.message.chat.id,
+                text='You passed a wrong date. It must '
+                     'look like this:\n`DD/MM/YYYY hh:mm:ss`',
+                parse_mode='markdown'
+            )
+            return
+
         if due:
             reminder = self.db.add_reminder(update, due, text)
             self._sched_reminder(due, reminder)
@@ -157,7 +168,8 @@ Made with love by @Lonami and hosted by Richard ❤️
             await self.sendMessage(
                 chat_id=update.message.chat.id,
                 text='Please specify your current time '
-                     'in the same message as the command!'
+                     'in the same message as the command, '
+                     'such as /tz hh:mm'
             )
             return
 
