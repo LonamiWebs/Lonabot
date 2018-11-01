@@ -28,9 +28,9 @@ _DUE_PARSE = re.compile(r'''
     (?:
         (\d+)       # day
         (?:
-            /(\d+)  # month
+            [/-](\d+)  # month
             (?:     # year
-                /(\d+)
+                [/-](\d+)
             )?
         )?
         \s+
