@@ -219,7 +219,8 @@ Made with love by @Lonami and hosted by Richard ❤️
                     reminder = reminder[:39] + '…'
                 text += f'\n({i}) {due}, {reminder}'
 
-        await self.sendMessage(chat_id=update.message.chat.id, text=text)
+        await self.sendMessage(chat_id=update.message.chat.id, text=text,
+                               parse_mode='html')
 
     @cmd(r'/clear')
     async def _clear(self, update):
