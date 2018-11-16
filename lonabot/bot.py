@@ -36,6 +36,9 @@ SAY_WHAT = (
     "True randomness doesn't always look that random…"
 )
 
+HALF_AT = 0
+HALF_IN = 1
+
 
 class Lonabot(Bot):
     def __init__(self, token, db):
@@ -60,7 +63,9 @@ class Lonabot(Bot):
             self._sched_reminder(due, reminder_id)
 
     async def on_update(self, update):
-        at = self._half_cmd.pop(update.message.from_.id, None)
+        half, reply_id = self._half_cmd.pop(
+            update.message.from_.id, (None, None))
+
         if not update.message.text:
             return
 
@@ -69,13 +74,15 @@ class Lonabot(Bot):
                 await method(update)
                 return
 
-        if at is not None:
-            if at:
-                update.message.text = f'/remindat {update.message.text}'
-                await self._remindat(update)
-            else:
-                update.message.text = f'/remindin {update.message.text}'
-                await self._remindin(update)
+        if not update.message.reply_to_message.message_id:
+            update.message.reply_to_message.message_id = reply_id
+
+        if half is HALF_AT:
+            update.message.text = f'/remindat {update.message.text}'
+            await self._remindat(update)
+        elif half is HALF_IN:
+            update.message.text = f'/remindin {update.message.text}'
+            await self._remindin(update)
         elif update.message.chat.type == 'private':
             await self.sendMessage(chat_id=update.message.from_.id,
                                    text=random.choice(SAY_WHAT))
@@ -104,8 +111,10 @@ Made with love by @Lonami and hosted by Richard ❤️
     @cmd(r'/remindin')
     async def _remindin(self, update):
         when = update.message.text.split(maxsplit=1)
+        reply_id = update.message.reply_to_message.message_id or None
+
         if len(when) == 1:
-            self._half_cmd[update.message.chat.id] = False
+            self._half_cmd[update.message.chat.id] = (HALF_IN, reply_id)
             await self.sendMessage(chat_id=update.message.chat.id,
                                    text='In when? :p')
             return
@@ -113,7 +122,7 @@ Made with love by @Lonami and hosted by Richard ❤️
         delay, text = utils.parse_delay(when[1])
         if delay:
             due = int(datetime.utcnow().timestamp() + delay)
-            reminder = self.db.add_reminder(update, due, text)
+            reminder = self.db.add_reminder(update, due, text, reply_id)
             self._sched_reminder(due, reminder)
             spelt = utils.spell_delay(delay, prefix=False)
             await self.sendMessage(chat_id=update.message.chat.id,
@@ -126,6 +135,8 @@ Made with love by @Lonami and hosted by Richard ❤️
     @cmd(r'/remindat')
     async def _remindat(self, update):
         delta = self.db.get_time_delta(update.message.from_.id)
+        reply_id = update.message.reply_to_message.message_id or None
+
         if delta is None:
             await self.sendMessage(
                 chat_id=update.message.chat.id,
@@ -136,7 +147,7 @@ Made with love by @Lonami and hosted by Richard ❤️
 
         due = update.message.text.split(maxsplit=1)
         if len(due) == 1:
-            self._half_cmd[update.message.chat.id] = True
+            self._half_cmd[update.message.chat.id] = (HALF_AT, reply_id)
             await self.sendMessage(chat_id=update.message.chat.id,
                                    text='At what time? :p')
             return
@@ -153,7 +164,7 @@ Made with love by @Lonami and hosted by Richard ❤️
             return
 
         if due:
-            reminder = self.db.add_reminder(update, due, text)
+            reminder = self.db.add_reminder(update, due, text, reply_id)
             self._sched_reminder(due, reminder)
             await self.sendMessage(chat_id=update.message.chat.id,
                                    text='Got it! Will remind you later')
@@ -192,7 +203,7 @@ Made with love by @Lonami and hosted by Richard ❤️
 
     @cmd(r'/status')
     async def _status(self, update):
-        reminders = self.db.get_reminders(update.message.chat.id)
+        reminders = list(self.db.iter_reminders(update.message.chat.id))
         delta = self.db.get_time_delta(update.message.from_.id)
         if len(reminders) == 0:
             text = "You don't have any reminder set yet. Less work for me!"
@@ -268,10 +279,12 @@ Made with love by @Lonami and hosted by Richard ❤️
                                        text='Er, that was not a valid number?')
 
     def _remind(self, reminder_id):
-        chat_id, text = self.db.pop_reminder(reminder_id)
+        chat_id, text, reply_to = self.db.pop_reminder(reminder_id)
         if chat_id:
-            asyncio.ensure_future(self.sendMessage(chat_id=chat_id, text=text,
-                                                   parse_mode='html'))
+            asyncio.ensure_future(self.sendMessage(
+                chat_id=chat_id, text=text, reply_to_message_id=reply_to,
+                parse_mode='html'
+            ))
 
     def _sched_reminder(self, due, reminder_id):
         delta = asyncio.get_event_loop().time() - datetime.utcnow().timestamp()
