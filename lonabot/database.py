@@ -131,8 +131,8 @@ class Database:
         if not chat_id:
             c.execute('SELECT ID, Due FROM Reminders ORDER BY Due ASC')
         else:
-            c.execute('SELECT Due, Text FROM Reminders ORDER BY Due ASC '
-                      'WHERE ChatID = ?', (chat_id,))
+            c.execute('SELECT Due, Text FROM Reminders '
+                      'WHERE ChatID = ? ORDER BY Due ASC', (chat_id,))
 
         row = c.fetchone()
         while row:
