@@ -125,9 +125,14 @@ class Database:
         self._save()
         return bool(row)
 
-    def iter_reminders(self):
+    def iter_reminders(self, chat_id=None):
         c = self._cursor()
-        c.execute('SELECT ID, Due FROM Reminders ORDER BY Due ASC')
+        if not chat_id:
+            c.execute('SELECT ID, Due FROM Reminders ORDER BY Due ASC')
+        else:
+            c.execute('SELECT ID, Due FROM Reminders ORDER BY Due ASC ',
+                      'WHERE ChatID = ?', (chat_id,))
+
         row = c.fetchone()
         while row:
             yield row
