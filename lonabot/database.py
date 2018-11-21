@@ -126,11 +126,12 @@ class Database:
         return bool(row)
 
     def iter_reminders(self, chat_id=None):
+        # NOTE: Behaviour is different if chat_id is given
         c = self._cursor()
         if not chat_id:
             c.execute('SELECT ID, Due FROM Reminders ORDER BY Due ASC')
         else:
-            c.execute('SELECT ID, Due FROM Reminders ORDER BY Due ASC ',
+            c.execute('SELECT Due, Text FROM Reminders ORDER BY Due ASC '
                       'WHERE ChatID = ?', (chat_id,))
 
         row = c.fetchone()
