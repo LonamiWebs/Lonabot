@@ -59,8 +59,8 @@ class Lonabot(Bot):
                     re.compile(f'{trigger}(@{self.me.username}|[^@]|$)',
                                flags=re.IGNORECASE).match, m))
 
-        for reminder_id, due in self.db.iter_reminders():
-            self._sched_reminder(due, reminder_id)
+        for reminder in self.db.iter_reminders():
+            self._sched_reminder(reminder.due, reminder.id)
 
     async def on_update(self, update):
         half, reply_id = self._half_cmd.pop(
@@ -122,8 +122,8 @@ Made with love by @Lonami and hosted by Richard ❤️
         delay, text = utils.parse_delay(when[1])
         if delay:
             due = int(datetime.utcnow().timestamp() + delay)
-            reminder = self.db.add_reminder(update, due, text, reply_id)
-            self._sched_reminder(due, reminder)
+            reminder_id = self.db.add_reminder(update, due, text, reply_id)
+            self._sched_reminder(due, reminder_id)
             spelt = utils.spell_delay(delay, prefix=False)
             await self.sendMessage(chat_id=update.message.chat.id,
                                    text=f'Got it! Will remind in {spelt}')
@@ -164,8 +164,8 @@ Made with love by @Lonami and hosted by Richard ❤️
             return
 
         if due:
-            reminder = self.db.add_reminder(update, due, text, reply_id)
-            self._sched_reminder(due, reminder)
+            reminder_id = self.db.add_reminder(update, due, text, reply_id)
+            self._sched_reminder(due, reminder_id)
             await self.sendMessage(chat_id=update.message.chat.id,
                                    text='Got it! Will remind you later')
         else:
@@ -208,10 +208,10 @@ Made with love by @Lonami and hosted by Richard ❤️
         if len(reminders) == 0:
             text = "You don't have any reminder set yet. Less work for me!"
         elif len(reminders) == 1:
-            due, reminder = reminders[0]
-            due = utils.spell_due(due, delta)
-            if reminder:
-                text = f'You have one reminder {due} for "{reminder}"'
+            reminder = reminders[0]
+            due = utils.spell_due(reminder.due, delta)
+            if reminder.text:
+                text = f'You have one reminder {due} for "{reminder.text}"'
             else:
                 text = f'You have one reminder {due}'
         else:
@@ -221,14 +221,12 @@ Made with love by @Lonami and hosted by Richard ❤️
                 text = f'You have {utils.spell_number(len(reminders))} ' \
                        f'reminders:'
 
-            for i, t in enumerate(reminders, start=1):
-                due, reminder = t
-                due = utils.spell_due(due, delta)
-                if not reminder:
-                    reminder = 'no text'
-                elif len(reminder) > 40:
-                    reminder = reminder[:39] + '…'
-                text += f'\n({i}) {due}, {reminder}'
+            for i, reminder in enumerate(reminders, start=1):
+                due = utils.spell_due(reminder.due, delta)
+                add = reminder.text or 'no text'
+                if len(add) > 40:
+                    add = add[:39] + '…'
+                text += f'\n({i}) {due}, {add}'
 
         await self.sendMessage(chat_id=update.message.chat.id, text=text,
                                parse_mode='html')
@@ -279,25 +277,26 @@ Made with love by @Lonami and hosted by Richard ❤️
                                        text='Er, that was not a valid number?')
 
     def _remind(self, reminder_id):
-        chat_id, user_id, text, reply_to = self.db.pop_reminder(reminder_id)
-        if chat_id:
-            asyncio.ensure_future(
-                self._do_remind(chat_id, user_id, text, reply_to))
+        reminder = self.db.pop_reminder(reminder_id)
+        if reminder:
+            asyncio.ensure_future(self._do_remind(reminder))
 
-    async def _do_remind(self, chat_id, user_id, text, reply_to):
+    async def _do_remind(self, reminder):
         kwargs = {}
-        if chat_id < 0:  # Group?
+        if reminder.chat_id > 0:  # User?
+            text = reminder.text
+        else:  # Group?
             kwargs['parse_mode'] = 'html'
             member = await self.getChatMember(
-                chat_id=chat_id, user_id=user_id)
+                chat_id=reminder.chat_id, user_id=reminder.creator_id)
 
             text = '<a href="tg://user?id={}">{}</a>: {}'.format(
-                user_id, member.user.first_name or '?', text)
+                reminder.creator_id, member.user.first_name or '?',
+                reminder.text)
 
         await self.sendMessage(
-            chat_id=chat_id, text=text, reply_to_message_id=reply_to,
-            **kwargs
-        )
+            chat_id=reminder.chat_id, text=text,
+            reply_to_message_id=reminder.reply_to, **kwargs)
 
     def _sched_reminder(self, due, reminder_id):
         delta = asyncio.get_event_loop().time() - datetime.utcnow().timestamp()

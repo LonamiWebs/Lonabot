@@ -1,9 +1,12 @@
-import html
+import collections
 import sqlite3
 import threading
 
-
 DB_VERSION = 3
+
+
+Reminder = collections.namedtuple(
+    'Reminder', 'id chat_id due text reply_to creator_id')
 
 
 class Database:
@@ -32,10 +35,10 @@ class Database:
             c.execute('CREATE TABLE Reminders('
                       'ID INTEGER PRIMARY KEY AUTOINCREMENT,'
                       'ChatID INTEGER NOT NULL,'
-                      'CreatorID INTEGER NOT NULL,'
                       'Due TIMESTAMP NOT NULL,'
                       'Text TEXT NOT NULL,'
-                      'ReplyTo INTEGER)')
+                      'ReplyTo INTEGER,'
+                      'CreatorID INTEGER NOT NULL)')
 
             self._save()
         c.close()
@@ -124,17 +127,16 @@ class Database:
         return bool(row)
 
     def iter_reminders(self, chat_id=None):
-        # NOTE: Behaviour is different if chat_id is given
         c = self._cursor()
-        if not chat_id:
-            c.execute('SELECT ID, Due FROM Reminders ORDER BY Due ASC')
+        if chat_id:
+            c.execute('SELECT * FROM Reminders WHERE ChatID = ? '
+                      'ORDER BY Due ASC', (chat_id,))
         else:
-            c.execute('SELECT Due, Text FROM Reminders '
-                      'WHERE ChatID = ? ORDER BY Due ASC', (chat_id,))
+            c.execute('SELECT * FROM Reminders ORDER BY Due ASC')
 
         row = c.fetchone()
         while row:
-            yield row
+            yield Reminder(*row)
             row = c.fetchone()
 
     def set_time_delta(self, user_id, delta):
@@ -154,10 +156,9 @@ class Database:
 
     def pop_reminder(self, reminder_id):
         c = self._cursor()
-        c.execute('SELECT ChatID, CreatorID, Text, ReplyTo '
-                  'FROM Reminders WHERE ID = ?', (reminder_id,))
+        c.execute('SELECT * FROM Reminders WHERE ID = ?', (reminder_id,))
         row = c.fetchone()
         c.execute('DELETE FROM Reminders WHERE ID = ?', (reminder_id,))
         c.close()
         self._save()
-        return row or (None, None, None, None)
+        return Reminder(*row) if row else None
