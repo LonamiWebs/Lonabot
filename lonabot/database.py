@@ -3,7 +3,7 @@ import sqlite3
 import threading
 
 
-DB_VERSION = 2
+DB_VERSION = 3
 
 
 class Database:
@@ -32,6 +32,7 @@ class Database:
             c.execute('CREATE TABLE Reminders('
                       'ID INTEGER PRIMARY KEY AUTOINCREMENT,'
                       'ChatID INTEGER NOT NULL,'
+                      'CreatorID INTEGER NOT NULL,'
                       'Due TIMESTAMP NOT NULL,'
                       'Text TEXT NOT NULL,'
                       'ReplyTo INTEGER)')
@@ -74,23 +75,20 @@ class Database:
         c = self._cursor()
         if old == 1:
             c.execute('ALTER TABLE Reminders ADD ReplyTo INTEGER')
+            old = 2
+        if old == 2:
+            c.execute('ALTER TABLE Reminders ADD CreatorID INTEGER '
+                      'NOT NULL DEFAULT 0')
 
         c.close()
 
     def add_reminder(self, update, due, text, reply_id):
         c = self._cursor()
-        text = html.escape(text)
-        if update.message.chat.type != 'private':
-            text = '<a href="tg://user?id={}">{}</a>: {}'.format(
-                update.message.from_.id or 0,
-                update.message.from_.first_name or '?',
-                text
-            )
-
+        m = update.message
         c.execute(
             'INSERT INTO Reminders '
-            '(ChatID, Due, Text, ReplyTo) VALUES (?, ?, ?, ?)',
-            (update.message.chat.id, due, text, reply_id)
+            '(ChatID, CreatorID, Due, Text, ReplyTo) VALUES (?, ?, ?, ?, ?)',
+            (m.chat.id, m.from_.id, due, text, reply_id)
         )
         new_id = c.lastrowid
         c.close()
@@ -156,10 +154,10 @@ class Database:
 
     def pop_reminder(self, reminder_id):
         c = self._cursor()
-        c.execute('SELECT ChatID, Text, ReplyTo '
+        c.execute('SELECT ChatID, CreatorID, Text, ReplyTo '
                   'FROM Reminders WHERE ID = ?', (reminder_id,))
         row = c.fetchone()
         c.execute('DELETE FROM Reminders WHERE ID = ?', (reminder_id,))
         c.close()
         self._save()
-        return row or (None, None, None)
+        return row or (None, None, None, None)

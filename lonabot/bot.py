@@ -279,12 +279,25 @@ Made with love by @Lonami and hosted by Richard ❤️
                                        text='Er, that was not a valid number?')
 
     def _remind(self, reminder_id):
-        chat_id, text, reply_to = self.db.pop_reminder(reminder_id)
+        chat_id, user_id, text, reply_to = self.db.pop_reminder(reminder_id)
         if chat_id:
-            asyncio.ensure_future(self.sendMessage(
-                chat_id=chat_id, text=text, reply_to_message_id=reply_to,
-                parse_mode='html'
-            ))
+            asyncio.ensure_future(
+                self._do_remind(chat_id, user_id, text, reply_to))
+
+    async def _do_remind(self, chat_id, user_id, text, reply_to):
+        kwargs = {}
+        if chat_id < 0:  # Group?
+            kwargs['parse_mode'] = 'html'
+            member = await self.getChatMember(
+                chat_id=chat_id, user_id=user_id)
+
+            text = '<a href="tg://user?id={}">{}</a>: {}'.format(
+                user_id, member.user.first_name or '?', text)
+
+        await self.sendMessage(
+            chat_id=chat_id, text=text, reply_to_message_id=reply_to,
+            **kwargs
+        )
 
     def _sched_reminder(self, due, reminder_id):
         delta = asyncio.get_event_loop().time() - datetime.utcnow().timestamp()
