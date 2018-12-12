@@ -284,15 +284,17 @@ Made with love by @Lonami and hosted by Richard ❤️
     async def _do_remind(self, reminder):
         kwargs = {}
         if reminder.chat_id > 0:  # User?
-            text = reminder.text
+            text = reminder.text or 'Reminder'
         else:  # Group?
             kwargs['parse_mode'] = 'html'
             member = await self.getChatMember(
                 chat_id=reminder.chat_id, user_id=reminder.creator_id)
 
-            text = '<a href="tg://user?id={}">{}</a>: {}'.format(
-                reminder.creator_id, member.user.first_name or '?',
-                reminder.text)
+            text = '<a href="tg://user?id={}">{}</a>'.format(
+                reminder.creator_id, member.user.first_name or '?')
+
+            if reminder.text:
+                text += ': ' + reminder.text
 
         await self.sendMessage(
             chat_id=reminder.chat_id, text=text,
