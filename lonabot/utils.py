@@ -2,17 +2,6 @@ import calendar
 import re
 from datetime import datetime, timedelta
 
-_UNITS_RE = re.compile(
-    r'(y(?:ears?)?'
-    r'|w(?:eeks?)?'
-    r'|d(?:ays?)?'
-    r'|h(?:ours?)?'
-    r'|m(?:in(?:ute)?s?)?'
-    r'|s(?:ecs?)?'
-    r')((?:\b|\d).*)',
-    re.IGNORECASE
-)
-
 _UNITS = {
     'y': 31536000.0,
     'w': 604800.0,
@@ -23,6 +12,7 @@ _UNITS = {
 }
 
 _DELAY_PARSE = re.compile(r'(\d+):(\d+)(?::(\d+))?')
+_UNIT_DELAY_PARSE = re.compile(r'\d+[ywdhms]?', re.IGNORECASE)
 
 _DUE_PARSE = re.compile(r'''
     (?:
@@ -49,47 +39,26 @@ def parse_delay(when):
         secs = int(m.group(3) or 0)
         delay = (hour * 60 + mins) * 60 + secs
     else:
-        # Try matching integers + possible units
-        when = when.split() + ['']
+        try:
+            when, text = re.match(r'(\S+)(.*)', when).groups()
+        except AttributeError:
+            return 0, when
+
         delay = 0.0
-        i = 0
-        while i < len(when):
-            m = re.match(r'(\d+(?:\.\d+)?)(.+)?', when[i])
+        while True:
+            m = _UNIT_DELAY_PARSE.match(when)
             if not m:
                 break
-            value = float(m.group(1))
-            unit = m.group(2)
-            if not unit:
-                i += 1
-                unit = when[i]
 
-            n = _UNITS_RE.match(unit)
-            if n:
-                unit = n.group(1)[0].lower()
-                if unit in _UNITS:
-                    delay += value * _UNITS[unit]
-                    if n.group(2):
-                        # {unit}{number + stuff} <- may be another value
-                        when[i] = n.group(2)
-                        i -= 1
-                else:
-                    delay += value * 60.0
-                    when[i] = n.group(0)
-                    break  # {invalid unit} <- assume user's text
+            step = m.group(0)
+            if step[-1].isdigit():
+                unit = 'm'
             else:
-                if int(delay):
-                    # The value should belong to the user's text unless
-                    # we already have something that's not gibberish.
-                    when[i] = m.group(0)
-                else:
-                    delay += value * 60.0
-                    if m.group(2):
-                        # Assume the thing after the value is user's text
-                        when[i] = m.group(2)
-                break
+                unit = step[-1].lower()
+                step = step[:-1]
 
-            i += 1
-        text = ' '.join(when[i:-1])
+            delay += int(step) * _UNITS[unit]
+            when = when[m.end():]
 
     return int(delay), text
 

@@ -95,7 +95,7 @@ class Lonabot(Bot):
 Hi! I'm {self.me.first_name.title()} and running in "reminder" mode.
 
 You can set reminders by using:
-`/remindin 1h 5m Optional text`
+`/remindin 1h30m Optional text`
 `/remindat 17:05 Optional text`
 `/remindat 17/11/2020 20:00 Optional text`
 
