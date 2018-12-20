@@ -39,6 +39,9 @@ SAY_WHAT = (
 HALF_AT = 0
 HALF_IN = 1
 
+MAX_DELAY_TIME = 365 * 24 * 60 * 60
+CAN_U_DONT = 'CAADAgAD9RsAAuVGLgIs0peZGJA21AI'
+
 
 class Lonabot(Bot):
     def __init__(self, token, db):
@@ -120,16 +123,19 @@ Made with love by @Lonami and hosted by Richard ❤️
             return
 
         delay, text = utils.parse_delay(when[1])
-        if delay:
+        if not delay:
+            await self.sendMessage(chat_id=update.message.chat.id,
+                                   text='What time is that?')
+        elif delay > MAX_DELAY_TIME:
+            await self.sendSticker(chat_id=update.message.chat.id,
+                                   sticker=CAN_U_DONT)
+        else:
             due = int(datetime.utcnow().timestamp() + delay)
             reminder_id = self.db.add_reminder(update, due, text, reply_id)
             self._sched_reminder(due, reminder_id)
             spelt = utils.spell_delay(delay, prefix=False)
             await self.sendMessage(chat_id=update.message.chat.id,
                                    text=f'Got it! Will remind in {spelt}')
-        else:
-            await self.sendMessage(chat_id=update.message.chat.id,
-                                   text='What time is that?')
 
     @limited
     @cmd(r'/remindat')
@@ -163,14 +169,17 @@ Made with love by @Lonami and hosted by Richard ❤️
             )
             return
 
-        if due:
+        if not due:
+            await self.sendMessage(chat_id=update.message.chat.id,
+                                   text='What time is that?')
+        elif due > int(datetime.utcnow().timestamp() + MAX_DELAY_TIME):
+            await self.sendSticker(chat_id=update.message.chat.id,
+                                   sticker=CAN_U_DONT)
+        else:
             reminder_id = self.db.add_reminder(update, due, text, reply_id)
             self._sched_reminder(due, reminder_id)
             await self.sendMessage(chat_id=update.message.chat.id,
                                    text='Got it! Will remind you later')
-        else:
-            await self.sendMessage(chat_id=update.message.chat.id,
-                                   text='What time is that?')
 
     @cmd(r'/tz')
     async def _tz(self, update):
