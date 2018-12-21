@@ -55,6 +55,24 @@ def rev(text):
     return ''.join(d.get(c, c) for c in reversed(text))
 
 
+def circle(text):
+    def work(text):
+        for c in text:
+            o = ord(c)
+            if 97 <= o <= 122:
+                yield chr(o + 9327)
+            elif 65 <= o <= 90:
+                yield chr(o + 9333)
+            elif 49 <= o <= 57:
+                yield chr(o + 9263)
+            elif o == 48:
+                return chr(9450)
+            else:
+                yield c
+
+    return ''.join(work(text))
+
+
 def enumerate_modify(text):
     """ unicod.es
     mathbold    = r'''𝐀𝐁𝐂𝐃𝐄𝐅𝐆𝐇𝐈𝐉𝐊𝐋𝐌𝐍𝐎𝐏𝐐𝐑𝐒𝐓𝐔𝐕𝐖𝐗𝐘𝐙𝐚𝐛𝐜𝐝𝐞𝐟𝐚𝐛𝐜𝐝𝐞𝐟𝐠𝐡𝐢𝐣𝐤𝐥𝐦𝐧𝐨𝐩𝐪𝐫𝐬𝐭𝐮𝐯𝐰𝐱𝐲𝐹'''
@@ -95,6 +113,7 @@ def get_all(text):
         return
     yield 'Strikethrough', strike(text)
     yield 'ａｅｓｔｈｅｔｈｉｃｓ．', aesthethics(text)
+    yield 'Ⓒⓘⓡⓒⓛⓔⓓ', circle(text)
     yield 'Hmuan Mnid Pweor', scramble(text)  # youtu.be/GWedYV-D_tg
     yield '.desreveR', rev(text)
 
