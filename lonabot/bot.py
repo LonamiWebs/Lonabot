@@ -171,7 +171,9 @@ Made with love by @Lonami and hosted by Richard ❤️
 
         if not due:
             await self.sendMessage(chat_id=update.message.chat.id,
-                                   text='What time is that?')
+                                   text='What time is that? (The right '
+                                        'format is `DD/MM/YYYY hh:mm:ss`)',
+                                   parse_mode='markdown')
         elif due > int(datetime.utcnow().timestamp() + MAX_DELAY_TIME):
             await self.sendSticker(chat_id=update.message.chat.id,
                                    sticker=CAN_U_DONT)
