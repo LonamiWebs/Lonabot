@@ -106,25 +106,35 @@ class Database:
         c.close()
         return count
 
-    def clear_reminders(self, chat_id):
+    def clear_reminders(self, chat_id, from_id):
         c = self._cursor()
-        c.execute('DELETE FROM Reminders WHERE ChatID = ?', (chat_id,))
+        c.execute('DELETE FROM Reminders WHERE '
+                  'ChatID = ? AND CreatorID = ?', (chat_id, from_id))
         c.close()
         self._save()
 
-    def clear_nth_reminder(self, chat_id, n):
+    def clear_nth_reminder(self, chat_id, from_id, n):
         c = self._cursor()
-        c.execute('SELECT ID FROM Reminders WHERE ChatID = ? '
+        c.execute('SELECT * FROM Reminders WHERE ChatID = ? '
                   'ORDER BY Due ASC', (chat_id,))
         row = c.fetchone()
         while row and n:
             n -= 1
             row = c.fetchone()
+
         if row:
-            c.execute('DELETE FROM Reminders WHERE ID = ?', row)
+            row = Reminder(*row)
+            if row.creator_id == from_id:
+                stat = +1
+                c.execute('DELETE FROM Reminders WHERE ID = ?', (row.id,))
+            else:
+                stat = -1
+        else:
+            stat = 0
+
         c.close()
         self._save()
-        return bool(row)
+        return stat
 
     def iter_reminders(self, chat_id=None):
         c = self._cursor()

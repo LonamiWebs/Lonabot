@@ -244,11 +244,13 @@ Made with love by @Lonami and hosted by Richard ❤️
 
     @cmd(r'/clear')
     async def _clear(self, update):
-        have = self.db.get_reminder_count(update.message.chat.id)
+        chat_id = update.message.chat.id
+        from_id = update.message.from_.id
+        have = self.db.get_reminder_count(chat_id)
         if not have:
             shrug = b'\xf0\x9f\xa4\xb7\xe2\x80\x8d\xe2\x99\x80\xef\xb8\x8f'
             await self.sendMessage(  # ^ haha unicode
-                chat_id=update.message.chat.id,
+                chat_id=chat_id,
                 text=f'Nothing to clear {str(shrug, encoding="utf-8")}'
             )
             return
@@ -256,36 +258,45 @@ Made with love by @Lonami and hosted by Richard ❤️
         which = update.message.text.split(maxsplit=1)
         if len(which) == 1:
             await self.sendMessage(
-                chat_id=update.message.chat.id,
+                chat_id=chat_id,
                 text='Please specify "all", "next" or '
                      'the number shown in /status (no quotes!)'
             )
             return
 
+        text = 'Beep boop, logic error - bug my owner to fix me'
         which = which[1].lower()
         if which == 'all':
-            self.db.clear_reminders(update.message.chat.id)
-            await self.sendMessage(chat_id=update.message.chat.id,
-                                   text=f'Poof {chr(128173)}! All be gone!')
+            self.db.clear_reminders(chat_id, from_id)
+            if chat_id == from_id:
+                text = 'Poof \U0001f4ad! All be gone!'
+            else:
+                text = 'Poof \U0001f4ad! All your reminders here be gone!'
         elif which == 'next':
-            self.db.clear_nth_reminder(update.message.chat.id, 0)
-            await self.sendMessage(chat_id=update.message.chat.id,
-                                   text=f'Sayonara next reminder!')
+            stat = self.db.clear_nth_reminder(chat_id, from_id, 0)
+            if stat == -1:
+                text = 'The next reminder is not yours!'
+            elif stat == 0:
+                text = 'You had no reminders here'
+            elif stat == 1:
+                text = 'Sayonara next reminder!'
         else:
             try:
                 which = int(which) - 1
                 if which < 0:
                     raise ValueError('Out of bounds')
 
-                if self.db.clear_nth_reminder(update.message.chat.id, which):
-                    await self.sendMessage(chat_id=update.message.chat.id,
-                                           text='Got it! The reminder is gone')
-                else:
-                    await self.sendMessage(chat_id=update.message.chat.id,
-                                           text="You don't have that many…")
+                stat = self.db.clear_nth_reminder(chat_id, from_id, which)
+                if stat == -1:
+                    text = 'That reminder does not belong to you!'
+                elif stat == 0:
+                    text = "You don't have that many reminders here…"
+                elif stat == 1:
+                    text = 'Got it! The reminder is gone'
             except ValueError:
-                await self.sendMessage(chat_id=update.message.chat.id,
-                                       text='Er, that was not a valid number?')
+                text = 'Er, that was not a valid number?'
+
+        await self.sendMessage(chat_id=chat_id, text=text)
 
     def _remind(self, reminder_id):
         reminder = self.db.pop_reminder(reminder_id)
