@@ -67,7 +67,7 @@ class Lonabot(Bot):
 
     async def on_update(self, update):
         half, reply_id = self._half_cmd.pop(
-            update.message.from_.id, (None, None))
+            update.message.chat.id, (None, None))
 
         if not update.message.text:
             return
