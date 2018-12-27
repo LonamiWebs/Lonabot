@@ -66,16 +66,15 @@ def parse_delay(when):
 
 
 def parse_due(due, delta):
-    m = _DUE_PARSE.match(due)
+    m = _DAY_PARSE.match(due)
     if m:
-        day, month, year, hour, mins, sec = (int(x or 0) for x in m.groups())
+        day, month, year = (int(x or 0) for x in m.groups())
     else:
-        m = _DAY_PARSE.match(due)
+        m = _DUE_PARSE.match(due)
         if not m:
             return None, due
 
-        day, month, year = (int(x or 0) for x in m.groups())
-        hour = mins = sec = 0
+        day, month, year, hour, mins, sec = (int(x or 0) for x in m.groups())
 
     text = due[m.end():]
 
