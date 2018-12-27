@@ -29,6 +29,8 @@ _DUE_PARSE = re.compile(r'''
     (?::(\d+))?  # minutes
     (?::(\d+))?  # seconds''', re.VERBOSE)
 
+_DAY_PARSE = re.compile(r'(\d+)[/-](\d+)(?:[/-](\d+))?')
+
 
 def parse_delay(when):
     m = _DELAY_PARSE.match(when)
@@ -65,10 +67,16 @@ def parse_delay(when):
 
 def parse_due(due, delta):
     m = _DUE_PARSE.match(due)
-    if not m:
-        return None, due
+    if m:
+        day, month, year, hour, mins, sec = (int(x or 0) for x in m.groups())
+    else:
+        m = _DAY_PARSE.match(due)
+        if not m:
+            return None, due
 
-    day, month, year, hour, mins, sec = (int(x or 0) for x in m.groups())
+        day, month, year = (int(x or 0) for x in m.groups())
+        hour = mins = sec = 0
+
     text = due[m.end():]
 
     # Work in local time...
