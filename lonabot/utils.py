@@ -69,6 +69,7 @@ def parse_due(due, delta):
     m = _DAY_PARSE.match(due)
     if m:
         day, month, year = (int(x or 0) for x in m.groups())
+        hour = mins = sec = 0
     else:
         m = _DUE_PARSE.match(due)
         if not m:
