@@ -42,6 +42,29 @@ HALF_IN = 1
 MAX_DELAY_TIME = 365 * 24 * 60 * 60
 CAN_U_DONT = 'CAADAgAD9RsAAuVGLgIs0peZGJA21AI'
 
+GOOD_BYE = [
+    'Goodbye',
+    'Zdravo',
+    'Joigin',
+    'Donadagohvi',
+    'Sbohem',
+    'Farvel',
+    'Tot ziens',
+    'Näkemiin',
+    'Au revoir',
+    'Yasou',
+    'Aloha',
+    'Namaste',
+    'Slan',
+    'Arrivederci',
+    'Atsiprasau',
+    'Adeus',
+    'Alweda',
+    'Adiós',
+    'Hamba kahle',
+    'Sayonara',
+]
+
 
 class Lonabot(Bot):
     def __init__(self, token, db):
@@ -279,7 +302,7 @@ Made with love by @Lonami and hosted by Richard ❤️
             elif stat == 0:
                 text = 'You had no reminders here'
             elif stat == 1:
-                text = 'Sayonara next reminder!'
+                text = f'{random.choice(GOOD_BYE)} next reminder!'
         else:
             try:
                 which = int(which) - 1
