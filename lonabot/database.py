@@ -91,7 +91,7 @@ class Database:
         c.execute(
             'INSERT INTO Reminders '
             '(ChatID, CreatorID, Due, Text, ReplyTo) VALUES (?, ?, ?, ?, ?)',
-            (m.chat.id, m.from_.id, due, text, reply_id)
+            (m.chat.id, m.from_.id, due, text.strip(), reply_id)
         )
         new_id = c.lastrowid
         c.close()
