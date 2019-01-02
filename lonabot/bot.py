@@ -4,7 +4,9 @@ import random
 import re
 from datetime import datetime
 
+import pytz
 from dumbot import Bot
+
 from . import utils
 from .constants import MAX_REMINDERS, MAX_TZ_STEP
 
@@ -214,19 +216,32 @@ Made with love by @Lonami and hosted by Richard ❤️
                 chat_id=update.message.chat.id,
                 text='Please specify your current time '
                      'in the same message as the command, '
-                     'such as /tz hh:mm'
+                     'such as /tz hh:mm or /tz Europe/Andorra'
             )
             return
 
         m = re.match(r'(\d+):(\d+)', tz[1])
-        if not m:
-            await self.sendMessage(chat_id=update.message.chat.id,
-                                   text='The time must be like /tz hh:mm')
-            return
+        if m:
+            hour, mins = map(int, m.groups())
+        else:
+            try:
+                # TODO This won't consider daylight saving time BS
+                remote = pytz.timezone(tz[1]).fromutc(datetime.utcnow())
+                hour, mins = remote.hour, remote.minute
+            except pytz.UnknownTimeZoneError:
+                await self.sendMessage(
+                    chat_id=update.message.chat.id,
+                    text='Sorry, not a clue where that is. Here is a list '
+                         'with the [timezones I know](https://raw.github'
+                         'usercontent.com/newvem/pytz/master/pytz/zone.tab) '
+                         'or use a time like /tz hh:mm.',
+                    parse_mode='markdown'
+                )
+                return
 
         now = datetime.utcnow()
         now = utils.large_round(now.hour * 60 + now.minute, MAX_TZ_STEP)
-        remote = int(m.group(1)) * 60 + int(m.group(2))
+        remote = hour * 60 + mins
         remote = utils.large_round(remote, MAX_TZ_STEP)
 
         delta = (remote - now) * 60
