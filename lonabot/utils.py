@@ -1,6 +1,6 @@
 import calendar
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 _UNITS = {
     'y': 31536000.0,
@@ -66,18 +66,41 @@ def parse_delay(when):
 
 
 def parse_due(due, delta):
-    m = _DAY_PARSE.match(due)
-    if m:
-        day, month, year = (int(x or 0) for x in m.groups())
-        hour = mins = sec = 0
-    else:
-        m = _DUE_PARSE.match(due)
-        if not m:
-            return None, due
+    try:
+        try:
+            d, t = due.split(maxsplit=1)
+        except ValueError:
+            d, t = due, ''
 
-        day, month, year, hour, mins, sec = (int(x or 0) for x in m.groups())
+        d = datetime.fromisoformat(d)
 
-    text = due[m.end():]
+        # Parsing succeeded, so set the correct text now.
+        # We don't want to clobber `text` until `d` is valid.
+        text = t
+        day, month, year, hour, mins, sec = (
+            d.day, d.month, d.year, d.hour, d.minute, d.second)
+
+        if d.tzinfo:
+            delta = d.tzinfo.utcoffset(
+                datetime.now(timezone.utc)).total_seconds()
+
+    except ValueError:
+        m = _DAY_PARSE.match(due)
+        if m:
+            day, month, year = (int(x or 0) for x in m.groups())
+            hour = mins = sec = 0
+        else:
+            m = _DUE_PARSE.match(due)
+            if not m:
+                return None, due
+
+            day, month, year, hour, mins, sec = (
+                int(x or 0) for x in m.groups())
+
+        text = due[m.end():]
+
+    if delta is None:
+        raise TypeError('delta was None (and due had no TZ info)')
 
     # Work in local time...
     now = datetime.utcnow() + timedelta(seconds=delta)

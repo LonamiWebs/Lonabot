@@ -168,14 +168,6 @@ Made with love by @Lonami and hosted by Richard ❤️
         delta = self.db.get_time_delta(update.message.from_.id)
         reply_id = update.message.reply_to_message.message_id or None
 
-        if delta is None:
-            await self.sendMessage(
-                chat_id=update.message.chat.id,
-                text="Wait! I don't know your local time. "
-                     "Please use /tz to set it first before trying again"
-            )
-            return
-
         due = update.message.text.split(maxsplit=1)
         if len(due) == 1:
             self._half_cmd[update.message.chat.id] = (HALF_AT, reply_id)
@@ -185,6 +177,13 @@ Made with love by @Lonami and hosted by Richard ❤️
 
         try:
             due, text = utils.parse_due(due[1], delta)
+        except TypeError:
+            await self.sendMessage(
+                chat_id=update.message.chat.id,
+                text="Wait! I don't know your local time. "
+                     "Please use /tz to set it first before trying again"
+            )
+            return
         except ValueError:
             await self.sendMessage(
                 chat_id=update.message.chat.id,
