@@ -84,7 +84,7 @@ def parse_due(due, delta):
             delta = d.tzinfo.utcoffset(
                 datetime.now(timezone.utc)).total_seconds()
 
-    except ValueError:
+    except (ValueError, AttributeError):
         m = _DAY_PARSE.match(due)
         if m:
             day, month, year = (int(x or 0) for x in m.groups())
