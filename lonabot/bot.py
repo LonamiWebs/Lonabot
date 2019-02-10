@@ -219,14 +219,17 @@ Made with love by @Lonami and hosted by Richard ❤️
             )
             return
 
+        delta = None
         m = re.match(r'(\d+):(\d+)', tz[1])
         if m:
             hour, mins = map(int, m.groups())
         else:
             try:
                 # TODO This won't consider daylight saving time BS
+                # TODO Do this delta thing better
                 remote = pytz.timezone(tz[1]).fromutc(datetime.utcnow())
-                hour, mins = remote.hour, remote.minute
+                now = datetime.now(tz=pytz.utc)
+                delta = int((remote - now).total_seconds())
             except pytz.UnknownTimeZoneError:
                 await self.sendMessage(
                     chat_id=update.message.chat.id,
@@ -238,10 +241,11 @@ Made with love by @Lonami and hosted by Richard ❤️
                 )
                 return
 
-        now = datetime.utcnow()
-        now = utils.large_round(now.hour * 60 + now.minute, MAX_TZ_STEP)
-        remote = hour * 60 + mins
-        remote = utils.large_round(remote, MAX_TZ_STEP)
+        if delta is None:
+            now = datetime.utcnow()
+            now = utils.large_round(now.hour * 60 + now.minute, MAX_TZ_STEP)
+            remote = hour * 60 + mins
+            remote = utils.large_round(remote, MAX_TZ_STEP)
 
         delta = (remote - now) * 60
         self.db.set_time_delta(update.message.from_.id, delta)
