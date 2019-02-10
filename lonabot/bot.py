@@ -247,7 +247,7 @@ Made with love by @Lonami and hosted by Richard ❤️
             remote = hour * 60 + mins
             remote = utils.large_round(remote, MAX_TZ_STEP)
 
-        delta = (remote - now) * 60
+            delta = (remote - now) * 60
         self.db.set_time_delta(update.message.from_.id, delta)
         await self.sendMessage(chat_id=update.message.chat.id,
                                text=f"Got it! There's a difference of "
