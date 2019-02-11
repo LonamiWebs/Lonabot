@@ -252,11 +252,10 @@ Made with love by @Lonami and hosted by Richard ❤️
 
         if delta is None:
             now = datetime.utcnow()
-            now = utils.large_round(now.hour * 60 + now.minute, MAX_TZ_STEP)
+            now = now.hour * 60 + now.minute
             remote = hour * 60 + mins
-            remote = utils.large_round(remote, MAX_TZ_STEP)
 
-            delta = (remote - now) * 60
+            delta = utils.large_round((remote - now) * 60, MAX_TZ_STEP)
 
             # Check that we're within the same day or the delta will be wrong
             if abs(delta) > MAX_TZ_DELTA:
