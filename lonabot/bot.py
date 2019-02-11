@@ -42,6 +42,7 @@ HALF_AT = 0
 HALF_IN = 1
 
 MAX_DELAY_TIME = 365 * 24 * 60 * 60
+MAX_TZ_DELTA = 12 * 60 * 60
 CAN_U_DONT = 'CAADAgAD9RsAAuVGLgIs0peZGJA21AI'
 
 TZ_URL = 'https://raw.githubusercontent.com/newvem/pytz/master/pytz/zone.tab'
@@ -256,6 +257,13 @@ Made with love by @Lonami and hosted by Richard ❤️
             remote = utils.large_round(remote, MAX_TZ_STEP)
 
             delta = (remote - now) * 60
+
+            # Check that we're within the same day or the delta will be wrong
+            if abs(delta) > MAX_TZ_DELTA:
+                if delta < 0:
+                    delta += 24 * 60 * 60
+                else:
+                    delta -= 24 * 60 * 60
 
         self.db.set_time_delta(update.message.from_.id, delta)
         await self.sendMessage(chat_id=update.message.chat.id,
