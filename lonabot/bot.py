@@ -44,6 +44,8 @@ HALF_IN = 1
 MAX_DELAY_TIME = 365 * 24 * 60 * 60
 CAN_U_DONT = 'CAADAgAD9RsAAuVGLgIs0peZGJA21AI'
 
+TZ_URL = 'https://raw.githubusercontent.com/newvem/pytz/master/pytz/zone.tab'
+
 GOOD_BYE = [
     'Goodbye',
     'Zdravo',
@@ -126,9 +128,16 @@ You can set reminders by using:
 `/remindin 1h30m Optional text`
 `/remindat 17:05 Optional text`
 `/remindat 17/11/2020 20:00 Optional text`
+`/remindat 2020-02-02T20:00:00+02:00 Optional text`
 
 Or list those you have by using:
 `/status`
+
+And change your timezone for use in `/remindat` with:
+`/tz 10:00`
+`/tz Europe/Madrid`
+
+Either by specifying your current time or [your location]({TZ_URL}).
 
 Everyone is allowed to use {MAX_REMINDERS} reminders max. No more!
 
@@ -233,10 +242,9 @@ Made with love by @Lonami and hosted by Richard ❤️
             except pytz.UnknownTimeZoneError:
                 await self.sendMessage(
                     chat_id=update.message.chat.id,
-                    text='Sorry, not a clue where that is. Here is a list '
-                         'with the [timezones I know](https://raw.github'
-                         'usercontent.com/newvem/pytz/master/pytz/zone.tab) '
-                         'or use a time like /tz hh:mm.',
+                    text=f'Sorry, not a clue where that is. Here is a list '
+                         f'with the [timezones I know]({TZ_URL}) '
+                         f'or use a time like /tz hh:mm.',
                     parse_mode='markdown'
                 )
                 return
