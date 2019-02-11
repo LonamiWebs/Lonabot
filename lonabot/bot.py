@@ -227,9 +227,9 @@ Made with love by @Lonami and hosted by Richard ❤️
             try:
                 # TODO This won't consider daylight saving time BS
                 # TODO Do this delta thing better
-                remote = pytz.timezone(tz[1]).fromutc(datetime.utcnow())
-                now = datetime.now(tz=pytz.utc)
-                delta = int((remote - now).total_seconds())
+                delta = int(pytz.timezone(tz[1]).utcoffset(
+                    datetime.utcnow()).total_seconds())
+
             except pytz.UnknownTimeZoneError:
                 await self.sendMessage(
                     chat_id=update.message.chat.id,
@@ -248,6 +248,7 @@ Made with love by @Lonami and hosted by Richard ❤️
             remote = utils.large_round(remote, MAX_TZ_STEP)
 
             delta = (remote - now) * 60
+
         self.db.set_time_delta(update.message.from_.id, delta)
         await self.sendMessage(chat_id=update.message.chat.id,
                                text=f"Got it! There's a difference of "
