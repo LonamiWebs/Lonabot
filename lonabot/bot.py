@@ -255,7 +255,7 @@ Made with love by @Lonami and hosted by Richard ❤️
             now = now.hour * 60 + now.minute
             remote = hour * 60 + mins
 
-            delta = utils.large_round((remote - now) * 60, MAX_TZ_STEP)
+            delta = utils.large_round(remote - now, MAX_TZ_STEP) * 60
 
             # Check that we're within the same day or the delta will be wrong
             if abs(delta) > MAX_TZ_DELTA:
