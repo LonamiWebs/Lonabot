@@ -115,7 +115,7 @@ class Lonabot(Bot):
             await self.sendMessage(chat_id=update.message.from_.id,
                                    text=random.choice(SAY_WHAT))
 
-    @cmd(r'/start')
+    @cmd(r'/(start|help)')
     async def _start(self, update):
         await self.sendMessage(
             chat_id=update.message.chat.id,
