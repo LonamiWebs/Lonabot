@@ -46,7 +46,12 @@ def parse_delay(when):
         except AttributeError:
             return 0, when
 
-        delay = 0.0
+        delay = parse_iso_duration(when)
+        if delay is not None:
+            return delay, text
+        else:
+            delay = 0.0
+
         while True:
             m = _UNIT_DELAY_PARSE.match(when)
             if not m:
@@ -211,6 +216,48 @@ def spell_delay(remaining, prefix=True):
             spelt += 's'
 
     return spelt.lstrip()
+
+
+def parse_iso_duration(what):
+    # https://en.wikipedia.org/wiki/ISO_8601#Durations
+    # Yes https://pypi.org/project/isodate/ exists.
+    # Yes I'm still using my own implementation. Sorry /bin/test ! -f
+    mapping = {
+        'Y': 365*24*60*60,
+        'M':  30*24*60*60,
+        'W':   7*24*60*60,
+        'D':     24*60*60
+    }
+
+    what = what.upper()
+    if what[0] != 'P':
+        return None  # invalid format
+
+    result = 0
+    number = ''
+    what = what[1:].replace(',', '.')
+    for c in what:
+        if c.isdigit() or c == '.':
+            number += c
+        elif c == 'T':
+            if number:
+                return None  # T without previous unit
+            else:
+                mapping = {
+                    'H': 60*60,
+                    'M':    60,
+                    'S':     1
+                }
+        else:
+            try:
+                result += float(number) * mapping[c]
+                number = ''
+            except ValueError:
+                return None  # malformed floating point number
+            except KeyError:
+                return None  # unknown unit
+
+    return result
 
 
 def large_round(number, precision):
