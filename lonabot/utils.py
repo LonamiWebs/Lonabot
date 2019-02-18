@@ -48,7 +48,7 @@ def parse_delay(when):
 
         delay = parse_iso_duration(when)
         if delay is not None:
-            return delay, text
+            return int(delay), text
         else:
             delay = 0.0
 
