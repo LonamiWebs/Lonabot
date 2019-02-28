@@ -7,7 +7,7 @@ from datetime import datetime
 import pytz
 from dumbot import Bot
 
-from . import utils
+from . import utils, heap, schedreminder
 from .constants import MAX_REMINDERS, MAX_TZ_STEP
 
 
@@ -76,6 +76,8 @@ class Lonabot(Bot):
         super().__init__(token, timeout=10 * 60)
         self._cmd = []
         self._half_cmd = {}
+        self._sched_reminders = None
+        self._check_sched_task = None
         self.me = None
         self.db = db
 
@@ -90,8 +92,20 @@ class Lonabot(Bot):
                     re.compile(f'{trigger}(@{self.me.username}|[^@]|$)',
                                flags=re.IGNORECASE).match, m))
 
-        for reminder in self.db.iter_reminders():
-            self._sched_reminder(reminder.due, reminder.id)
+        self._sched_reminders = heap.Heap(
+            schedreminder.SchedReminder(r.id, r.due)
+            for r in self.db.iter_reminders()
+        )
+        self._check_sched_task = self._loop.create_task(self._check_sched())
+
+    async def disconnect(self):
+        await super().disconnect()
+
+        self._check_sched_task.cancel()
+        try:
+            await self._check_sched_task
+        except asyncio.CancelledError:
+            pass
 
     async def on_update(self, update):
         half, reply_id = self._half_cmd.pop(
@@ -167,7 +181,7 @@ Made with love by @Lonami and hosted by Richard ❤️
         else:
             due = int(datetime.utcnow().timestamp() + delay)
             reminder_id = self.db.add_reminder(update, due, text, reply_id)
-            self._sched_reminder(due, reminder_id)
+            self._sched_reminder(reminder_id, due)
             spelt = utils.spell_delay(delay, prefix=False)
             await self.sendMessage(chat_id=update.message.chat.id,
                                    text=f'Got it! Will remind in {spelt}')
@@ -213,7 +227,7 @@ Made with love by @Lonami and hosted by Richard ❤️
                                    sticker=CAN_U_DONT)
         else:
             reminder_id = self.db.add_reminder(update, due, text, reply_id)
-            self._sched_reminder(due, reminder_id)
+            self._sched_reminder(reminder_id, due)
             await self.sendMessage(chat_id=update.message.chat.id,
                                    text='Got it! Will remind you later')
 
@@ -355,12 +369,7 @@ Made with love by @Lonami and hosted by Richard ❤️
 
         await self.sendMessage(chat_id=chat_id, text=text)
 
-    def _remind(self, reminder_id):
-        reminder = self.db.pop_reminder(reminder_id)
-        if reminder:
-            asyncio.ensure_future(self._do_remind(reminder))
-
-    async def _do_remind(self, reminder):
+    async def _remind(self, reminder):
         kwargs = {}
         if reminder.chat_id > 0:  # User?
             text = reminder.text or 'Reminder'
@@ -379,7 +388,22 @@ Made with love by @Lonami and hosted by Richard ❤️
             chat_id=reminder.chat_id, text=text,
             reply_to_message_id=reminder.reply_to, **kwargs)
 
-    def _sched_reminder(self, due, reminder_id):
-        delta = asyncio.get_event_loop().time() - datetime.utcnow().timestamp()
-        asyncio.get_event_loop().call_at(
-            due + delta, functools.partial(self._remind, reminder_id))
+    async def _check_sched(self):
+        while self._running:
+            while self._sched_reminders:
+                upcoming = self._sched_reminders.peek()
+                delta = upcoming.due - datetime.utcnow().timestamp()
+                if delta > 1:
+                    break
+
+                await asyncio.sleep(delta)
+                self._sched_reminders.pop()
+                reminder = self.db.pop_reminder(upcoming.id)
+                if reminder:
+                    self._loop.create_task(self._remind(reminder))
+
+            await asyncio.sleep(1)
+
+    def _sched_reminder(self, reminder_id, due):
+        self._sched_reminders.push(
+            schedreminder.SchedReminder(reminder_id, due))
