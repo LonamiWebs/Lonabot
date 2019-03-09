@@ -5,17 +5,10 @@ import re
 from datetime import datetime
 
 import pytz
-from dumbot import Bot
+import dumbot
 
 from . import utils, heap, schedreminder
 from .constants import MAX_REMINDERS, MAX_TZ_STEP
-
-
-def cmd(text):
-    def decorator(f):
-        f._trigger = text
-        return f
-    return decorator
 
 
 def limited(f):
@@ -71,7 +64,7 @@ GOOD_BYE = [
 ]
 
 
-class Lonabot(Bot):
+class Lonabot(dumbot.Bot):
     def __init__(self, token, db):
         super().__init__(token, timeout=10 * 60)
         self._cmd = []
@@ -132,8 +125,12 @@ class Lonabot(Bot):
             await self.sendMessage(chat_id=update.message.from_.id,
                                    text=random.choice(SAY_WHAT))
 
-    @cmd(r'/(start|help)')
-    async def _start(self, update):
+    @dumbot.command
+    async def help(self, update):
+        await self.start(update)
+
+    @dumbot.command
+    async def start(self, update):
         await self.sendMessage(
             chat_id=update.message.chat.id,
             text=f'''
@@ -160,8 +157,8 @@ Made with love by @Lonami and hosted by Richard ❤️
 '''.strip(), parse_mode='markdown')
 
     @limited
-    @cmd(r'/remindin')
-    async def _remindin(self, update):
+    @dumbot.command
+    async def remindin(self, update):
         when = update.message.text.split(maxsplit=1)
         reply_id = update.message.reply_to_message.message_id or None
 
@@ -187,8 +184,8 @@ Made with love by @Lonami and hosted by Richard ❤️
                                    text=f'Got it! Will remind in {spelt}')
 
     @limited
-    @cmd(r'/remindat')
-    async def _remindat(self, update):
+    @dumbot.command
+    async def remindat(self, update):
         delta = self.db.get_time_delta(update.message.from_.id)
         reply_id = update.message.reply_to_message.message_id or None
 
@@ -231,8 +228,8 @@ Made with love by @Lonami and hosted by Richard ❤️
             await self.sendMessage(chat_id=update.message.chat.id,
                                    text='Got it! Will remind you later')
 
-    @cmd(r'/tz')
-    async def _tz(self, update):
+    @dumbot.command
+    async def tz(self, update):
         tz = update.message.text.split(maxsplit=1)
         if len(tz) == 1:
             await self.sendMessage(
@@ -283,8 +280,8 @@ Made with love by @Lonami and hosted by Richard ❤️
                                text=f"Got it! There's a difference of "
                                     f"{delta} seconds between you and I :D")
 
-    @cmd(r'/status')
-    async def _status(self, update):
+    @dumbot.command
+    async def status(self, update):
         reminders = list(self.db.iter_reminders(update.message.chat.id))
         delta = self.db.get_time_delta(update.message.from_.id)
         if len(reminders) == 0:
@@ -313,8 +310,8 @@ Made with love by @Lonami and hosted by Richard ❤️
         await self.sendMessage(chat_id=update.message.chat.id, text=text,
                                parse_mode='html')
 
-    @cmd(r'/clear')
-    async def _clear(self, update):
+    @dumbot.command
+    async def clear(self, update):
         chat_id = update.message.chat.id
         from_id = update.message.from_.id
         have = self.db.get_reminder_count(chat_id)
