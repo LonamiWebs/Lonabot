@@ -7,7 +7,7 @@ from datetime import datetime
 import pytz
 import dumbot
 
-from . import utils, heap, schedreminder
+from . import utils, heap, schedreminder, birthdays
 from .constants import MAX_REMINDERS, MAX_TZ_STEP
 
 
@@ -365,6 +365,50 @@ Made with love by @Lonami and hosted by Richard ❤️
                 text = 'Er, that was not a valid number?'
 
         await self.sendMessage(chat_id=chat_id, text=text)
+
+    # Birthdays
+
+    @dumbot.command
+    async def remindbday(self, update):
+        await self.sendMessage(
+            chat_id=update.message.chat.id,
+            text="Let's add a birthday! First, "
+                 "select your friend's birthday month",
+            reply_markup=birthdays.MONTH_MARKUP
+        )
+
+    @dumbot.inline_button(r'm(\d+)')
+    async def month(self, update, match):
+        message = update.callback_query.message
+        await self.editMessageText(
+            chat_id=message.chat.id,
+            message_id=message.message_id,
+            text='Now please select the day of their birthday, '
+                 'or click the name of the month to change it',
+            reply_markup=birthdays.MONTH_DAY_MARKUP[int(match.group(1)) - 1]
+        )
+
+    @dumbot.inline_button(r'y')
+    async def year(self, update, match):
+        message = update.callback_query.message
+        await self.editMessageText(
+            chat_id=message.chat.id,
+            message_id=message.message_id,
+            text='Different month? No problem :) Please select '
+                 'the month of their birthday once again',
+            reply_markup=birthdays.MONTH_MARKUP
+        )
+
+    @dumbot.inline_button(r'm(\d+)d(\d+)')
+    async def day(self, update, match):
+        message = update.callback_query.message
+        await self.editMessageText(
+            chat_id=message.chat.id,
+            message_id=message.message_id,
+            text='Almost done! Forward me a message sent by that '
+                 'person or send me their name so that I can remind '
+                 'you about them with a nice click-able mention ^^'
+        )
 
     async def _remind(self, reminder):
         kwargs = {}
