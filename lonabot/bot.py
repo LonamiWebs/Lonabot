@@ -31,8 +31,7 @@ SAY_WHAT = (
     "True randomness doesn't always look that random…"
 )
 
-HALF_AT = 0
-HALF_IN = 1
+HALF_AT, HALF_IN, CONV_BD = range(3)
 
 MAX_DELAY_TIME = 365 * 24 * 60 * 60
 MAX_TZ_DELTA = 12 * 60 * 60
@@ -68,7 +67,7 @@ class Lonabot(dumbot.Bot):
     def __init__(self, token, db):
         super().__init__(token, timeout=10 * 60)
         self._cmd = []
-        self._half_cmd = {}
+        self._conversation = {}
         self._sched_reminders = None
         self._check_sched_task = None
         self.me = None
@@ -101,7 +100,7 @@ class Lonabot(dumbot.Bot):
             pass
 
     async def on_update(self, update):
-        half, reply_id = self._half_cmd.pop(
+        conv, data = self._conversation.pop(
             update.message.chat.id, (None, None))
 
         if not update.message.text:
@@ -112,15 +111,18 @@ class Lonabot(dumbot.Bot):
                 await method(update)
                 return
 
-        if not update.message.reply_to_message.message_id:
-            update.message.reply_to_message.message_id = reply_id
+        if conv in (HALF_AT, HALF_IN) \
+                and not update.message.reply_to_message.message_id:
+            update.message.reply_to_message.message_id = data
 
-        if half is HALF_AT:
+        if conv is HALF_AT:
             update.message.text = f'/remindat {update.message.text}'
             await self._remindat(update)
-        elif half is HALF_IN:
+        elif conv is HALF_IN:
             update.message.text = f'/remindin {update.message.text}'
             await self._remindin(update)
+        elif conv is CONV_BD:
+            await self._add_bday(update, data)
         elif update.message.chat.type == 'private':
             await self.sendMessage(chat_id=update.message.from_.id,
                                    text=random.choice(SAY_WHAT))
@@ -163,7 +165,7 @@ Made with love by @Lonami and hosted by Richard ❤️
         reply_id = update.message.reply_to_message.message_id or None
 
         if len(when) == 1:
-            self._half_cmd[update.message.chat.id] = (HALF_IN, reply_id)
+            self._conversation[update.message.chat.id] = (HALF_IN, reply_id)
             await self.sendMessage(chat_id=update.message.chat.id,
                                    text='In when? :p')
             return
@@ -191,7 +193,7 @@ Made with love by @Lonami and hosted by Richard ❤️
 
         due = update.message.text.split(maxsplit=1)
         if len(due) == 1:
-            self._half_cmd[update.message.chat.id] = (HALF_AT, reply_id)
+            self._conversation[update.message.chat.id] = (HALF_AT, reply_id)
             await self.sendMessage(chat_id=update.message.chat.id,
                                    text='At what time? :p')
             return
@@ -402,12 +404,32 @@ Made with love by @Lonami and hosted by Richard ❤️
     @dumbot.inline_button(r'm(\d+)d(\d+)')
     async def day(self, update, match):
         message = update.callback_query.message
+        self._conversation[message.chat.id] = CONV_BD, match.groups()
         await self.editMessageText(
             chat_id=message.chat.id,
             message_id=message.message_id,
             text='Almost done! Forward me a message sent by that '
                  'person or send me their name so that I can remind '
                  'you about them with a nice click-able mention ^^'
+        )
+
+    async def _add_bday(self, update, data):
+        month, day = data
+        who = update.message.forward_from
+        if not who:
+            text = "They don't have Telegram, huh? You should tell "\
+                   "them to join! Anyway, I've added the reminder!"
+        elif who.id == self._me.id:
+            text = "That's sweet, but that's not my birthday ❤"
+        elif who.id == update.message.from_.id:
+            text = "You need a reminder for your own birthday? "\
+                   "Okay, I won't judge :) -- Reminder added!"
+        else:
+            text = 'Consider it done! I have added the reminder'
+
+        await self.sendMessage(
+            chat_id=update.message.chat.id,
+            text=text
         )
 
     async def _remind(self, reminder):
