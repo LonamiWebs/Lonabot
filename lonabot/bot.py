@@ -427,6 +427,13 @@ Made with love by @Lonami and hosted by Richard ❤️
         else:
             text = 'Consider it done! I have added the reminder'
 
+        self.db.add_birthday(
+            creator_id=update.message.chat.id,
+            month=month,
+            day=day,
+            person_id=who.id or None,
+            person_name=who.first_name or update.message.text
+        )
         await self.sendMessage(
             chat_id=update.message.chat.id,
             text=text
