@@ -95,7 +95,6 @@ GOOD_BYE = [
 class Lonabot(dumbot.Bot):
     def __init__(self, token, db):
         super().__init__(token, timeout=10 * 60)
-        self._cmd = []
         self._conversation = {}
         self._sched_reminders = None
         self._check_sched_task = None
@@ -104,15 +103,6 @@ class Lonabot(dumbot.Bot):
 
     async def init(self):
         self.me = await self.getMe()
-        self._cmd.clear()
-        for m in dir(self):
-            m = getattr(self, m)
-            trigger = getattr(m, '_trigger', None)
-            if isinstance(trigger, str):
-                self._cmd.append((
-                    re.compile(f'{trigger}(@{self.me.username}|[^@]|$)',
-                               flags=re.IGNORECASE).match, m))
-
         self._sched_reminders = heap.Heap(
             schedreminder.SchedReminder(r.id, r.due)
             for r in self.db.iter_reminders()
@@ -134,11 +124,6 @@ class Lonabot(dumbot.Bot):
 
         if not update.message.text:
             return
-
-        for trigger, method in self._cmd:
-            if trigger(update.message.text):
-                await method(update)
-                return
 
         if conv in (HALF_AT, HALF_IN) \
                 and not update.message.reply_to_message.message_id:
