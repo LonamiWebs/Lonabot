@@ -33,7 +33,7 @@ def get_month_button(month, text=None):
 
     return {
         'text': text or calendar.month_name[month],
-        'callback_data': f'm{month:02}'
+        'callback_data': f'birthday/add/m{month:02}'
     }
 
 
@@ -44,7 +44,7 @@ def get_day_button(month, day):
     if 0 < day <= calendar.monthrange(2000, month)[1]:
         return {
             'text': f'{day}',
-            'callback_data': f'm{month:02}d{day:02}'
+            'callback_data': f'birthday/add/m{month:02}d{day:02}'
         }
     else:
         return _EMPTY_BUTTON
@@ -65,7 +65,7 @@ MONTH_DAY_MARKUP = [
 for m, day_buttons in enumerate(MONTH_DAY_MARKUP, start=1):
     day_buttons.insert(0, [{
         'text': calendar.month_name[m],
-        'callback_data': 'y'
+        'callback_data': 'birthday/add/y'
     }])
     day_buttons[-1].insert(0, get_month_button(m - 1, '<<'))
     day_buttons[-1].append(_EMPTY_BUTTON)
@@ -78,7 +78,7 @@ MONTH_DAY_MARKUP = [{'inline_keyboard': x} for x in MONTH_DAY_MARKUP]
 def build_clear_markup(birthdays):
     return {'inline_keyboard': [
         [{'text': f'{r.person_name} ({r.day} {calendar.month_name[r.month]})',
-          'callback_data': f'c{r.id}'}]
+          'callback_data': f'birthday/clear/{r.id}'}]
 
         for r in birthdays
     ]}

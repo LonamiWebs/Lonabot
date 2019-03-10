@@ -401,7 +401,7 @@ Made with love by @Lonami and hosted by Richard ❤️
             reply_markup=birthdays.MONTH_MARKUP
         )
 
-    @dumbot.inline_button(r'm(\d+)')
+    @dumbot.inline_button(r'birthday/add/m(\d+)')
     async def month(self, update, match):
         message = update.callback_query.message
         await self.editMessageText(
@@ -412,7 +412,7 @@ Made with love by @Lonami and hosted by Richard ❤️
             reply_markup=birthdays.MONTH_DAY_MARKUP[int(match.group(1)) - 1]
         )
 
-    @dumbot.inline_button(r'y')
+    @dumbot.inline_button(r'birthday/add/y')
     async def year(self, update, match):
         message = update.callback_query.message
         await self.editMessageText(
@@ -423,7 +423,7 @@ Made with love by @Lonami and hosted by Richard ❤️
             reply_markup=birthdays.MONTH_MARKUP
         )
 
-    @dumbot.inline_button(r'm(\d+)d(\d+)')
+    @dumbot.inline_button(r'birthday/add/m(\d+)d(\d+)')
     async def day(self, update, match):
         message = update.callback_query.message
         self._conversation[message.chat.id] = CONV_BD, match.groups()
@@ -477,7 +477,7 @@ Made with love by @Lonami and hosted by Richard ❤️
                 self.db.iter_birthdays(update.message.chat.id))
         )
 
-    @dumbot.inline_button(r'c(\d+)')
+    @dumbot.inline_button(r'birthday/clear/(\d+)')
     async def _delete_bday(self, update, match):
         self.db.delete_birthday(int(match.group(1)))
 
