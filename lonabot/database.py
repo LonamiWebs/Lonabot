@@ -233,3 +233,4 @@ class Database:
         c = self._cursor()
         c.execute('DELETE FROM Birthdays WHERE ID = ?', (birthday_id,))
         c.close()
+        self._save()
