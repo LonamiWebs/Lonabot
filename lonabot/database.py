@@ -202,3 +202,30 @@ class Database:
         )
         c.close()
         self._save()
+
+    # TODO Factor these out (similar to get_reminder_count and iter_reminders)
+    def get_birthday_count(self, creator_id):
+        c = self._cursor()
+        c.execute('SELECT COUNT(*) FROM Birthdays WHERE CreatorID = ?',
+                  (creator_id,))
+        count = c.fetchone()[0]
+        c.close()
+        return count
+
+    def iter_birthdays(self, creator_id=None):
+        c = self._cursor()
+        if creator_id:
+            c.execute('SELECT * FROM Birthdays WHERE CreatorID = ? '
+                      'ORDER BY Month ASC, Day ASC', (creator_id,))
+        else:
+            c.execute('SELECT * FROM Birthdays ORDER BY Month ASC, Day ASC')
+
+        row = c.fetchone()
+        while row:
+            yield Birthday(*row)
+            row = c.fetchone()
+
+    def delete_birthday(self, birthday_id):
+        c = self._cursor()
+        c.execute('DELETE FROM Birthdays WHERE ID = ?', (birthday_id,))
+        c.close()

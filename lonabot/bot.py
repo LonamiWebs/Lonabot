@@ -4,11 +4,11 @@ import random
 import re
 from datetime import datetime
 
-import pytz
 import dumbot
+import pytz
 
 from . import utils, heap, schedreminder, birthdays
-from .constants import MAX_REMINDERS, MAX_TZ_STEP
+from .constants import MAX_REMINDERS, MAX_BIRTHDAYS, MAX_TZ_STEP
 
 
 def limited(f):
@@ -21,6 +21,21 @@ def limited(f):
             await self.sendMessage(chat_id=update.message.chat.id,
                                    text='Looks like you already have enough '
                                         'reminders… Sorry about that')
+    return wrapped
+
+# TODO Factor these out
+
+
+def birthday_limited(f):
+    @functools.wraps(f)
+    async def wrapped(self, update):
+        count = self.db.get_birthday_count(update.message.chat.id)
+        if count < MAX_BIRTHDAYS:
+            await f(self, update)
+        else:
+            await self.sendMessage(chat_id=update.message.chat.id,
+                                   text='Looks like you already have enough '
+                                        'birthdays saved… Sorry about that')
     return wrapped
 
 
@@ -316,6 +331,19 @@ Made with love by @Lonami and hosted by Richard ❤️
     async def clear(self, update):
         chat_id = update.message.chat.id
         from_id = update.message.from_.id
+        which = update.message.text.split(maxsplit=1)
+        if len(which) == 1:
+            await self.sendMessage(
+                chat_id=chat_id,
+                text='Please specify "all", "next", "bday" or '
+                     'the number shown in /status (no quotes!)'
+            )
+            return
+
+        which = which[1].lower()
+        if which == 'bday':
+            return await self._clear_bday(update)
+
         have = self.db.get_reminder_count(chat_id)
         if not have:
             shrug = b'\xf0\x9f\xa4\xb7\xe2\x80\x8d\xe2\x99\x80\xef\xb8\x8f'
@@ -325,17 +353,7 @@ Made with love by @Lonami and hosted by Richard ❤️
             )
             return
 
-        which = update.message.text.split(maxsplit=1)
-        if len(which) == 1:
-            await self.sendMessage(
-                chat_id=chat_id,
-                text='Please specify "all", "next" or '
-                     'the number shown in /status (no quotes!)'
-            )
-            return
-
         text = 'Beep boop, logic error - bug my owner to fix me'
-        which = which[1].lower()
         if which == 'all':
             self.db.clear_reminders(chat_id, from_id)
             if chat_id == from_id:
@@ -370,6 +388,10 @@ Made with love by @Lonami and hosted by Richard ❤️
 
     # Birthdays
 
+    # Note: we assume Telegram doesn't let send people arbitrary payload.
+    #       Otherwise, they could bypass this main command and just send data.
+    #       We also rely on this fact to clear birthdays.
+    @birthday_limited
     @dumbot.command
     async def remindbday(self, update):
         await self.sendMessage(
@@ -437,6 +459,44 @@ Made with love by @Lonami and hosted by Richard ❤️
         await self.sendMessage(
             chat_id=update.message.chat.id,
             text=text
+        )
+
+    async def _clear_bday(self, update):
+        count = self.db.get_birthday_count(update.message.chat.id)
+        if not count:
+            await self.sendMessage(
+                chat_id=update.message.chat.id,
+                text='You have not saved any birthday with me yet'
+            )
+            return
+
+        await self.sendMessage(
+            chat_id=update.message.chat.id,
+            text='Which birthday do you want to remove?',
+            reply_markup=birthdays.build_clear_markup(
+                self.db.iter_birthdays(update.message.chat.id))
+        )
+
+    @dumbot.inline_button(r'c(\d+)')
+    async def _delete_bday(self, update, match):
+        self.db.delete_birthday(int(match.group(1)))
+
+        message = update.callback_query.message
+        count = self.db.get_birthday_count(message.chat.id)
+        if not count:
+            await self.sendMessage(
+                chat_id=message.chat.id,
+                text='I have deleted all your saved birthdays now :)'
+            )
+            return
+
+        await self.editMessageText(
+            chat_id=message.chat.id,
+            message_id=message.message_id,
+            text='Gone! Any other to remove?',
+            reply_markup=birthdays.build_clear_markup(
+                self.db.iter_birthdays(update.message.chat.id))
+
         )
 
     async def _remind(self, reminder):

@@ -73,3 +73,12 @@ for m, day_buttons in enumerate(MONTH_DAY_MARKUP, start=1):
     day_buttons[-1].append(get_month_button(m + 1, '>>'))
 
 MONTH_DAY_MARKUP = [{'inline_keyboard': x} for x in MONTH_DAY_MARKUP]
+
+
+def build_clear_markup(birthdays):
+    return {'inline_keyboard': [
+        [{'text': f'{r.person_name} ({r.day} {calendar.month_name[r.month]})',
+          'callback_data': f'c{r.id}'}]
+
+        for r in birthdays
+    ]}
