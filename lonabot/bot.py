@@ -39,6 +39,20 @@ def birthday_limited(f):
     return wrapped
 
 
+def private(f):
+    @functools.wraps(f)
+    async def wrapped(self, update):
+        if update.message.chat.type == 'private':
+            await f(self, update)
+        else:
+            await self.sendMessage(chat_id=update.message.chat.id,
+                                   text=f'Please [message me in private]'
+                                        f'(tg://user?id={self._me.id}) for '
+                                        f'that :)',
+                                   parse_mode='markdown')
+    return wrapped
+
+
 SAY_WHAT = (
     'Say what?', "Sorry I didn't understand!", 'Uhm?', 'Need anything?',
     'What did you mean?', 'Are you trying to see all I can say?',
@@ -391,6 +405,7 @@ Made with love by @Lonami and hosted by Richard ❤️
     # Note: we assume Telegram doesn't let send people arbitrary payload.
     #       Otherwise, they could bypass this main command and just send data.
     #       We also rely on this fact to clear birthdays.
+    @private
     @birthday_limited
     @dumbot.command
     async def remindbday(self, update):
@@ -461,6 +476,7 @@ Made with love by @Lonami and hosted by Richard ❤️
             text=text
         )
 
+    @private
     async def _clear_bday(self, update):
         count = self.db.get_birthday_count(update.message.chat.id)
         if not count:
