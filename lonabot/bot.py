@@ -509,8 +509,7 @@ Made with love by @Lonami and hosted by Richard ❤️
             message_id=message.message_id,
             text='Gone! Any other to remove?',
             reply_markup=birthdays.build_clear_markup(
-                self.db.iter_birthdays(update.message.chat.id))
-
+                self.db.iter_birthdays(message.chat.id))
         )
 
     async def _remind(self, reminder):
