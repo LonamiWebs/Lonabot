@@ -169,6 +169,8 @@ class Database:
             yield Reminder(*row)
             row = c.fetchone()
 
+        c.close()
+
     def set_time_delta(self, user_id, delta):
         c = self._cursor()
         c.execute(
@@ -224,6 +226,8 @@ class Database:
         while row:
             yield Birthday(*row)
             row = c.fetchone()
+
+        c.close()
 
     def delete_birthday(self, birthday_id):
         c = self._cursor()
