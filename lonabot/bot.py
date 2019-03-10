@@ -3,6 +3,7 @@ import contextlib
 import functools
 import html
 import random
+import logging
 import re
 from datetime import datetime, timedelta
 
@@ -52,6 +53,17 @@ def private(f):
                                         f'(tg://user?id={self._me.id}) for '
                                         f'that :)',
                                    parse_mode='markdown')
+    return wrapped
+
+
+def log_exc(f):
+    @functools.wraps(f)
+    async def wrapped(*args, **kwargs):
+        try:
+            return await f(*args, **kwargs)
+        except Exception:
+            logging.exception('Unhandled exception in %s', f)
+
     return wrapped
 
 
@@ -537,6 +549,7 @@ Made with love by @Lonami and hosted by Richard ❤️
             chat_id=reminder.chat_id, text=text,
             reply_to_message_id=reminder.reply_to, **kwargs)
 
+    @log_exc
     async def _check_sched(self):
         while self._running:
             while self._sched_reminders:
@@ -557,6 +570,7 @@ Made with love by @Lonami and hosted by Richard ❤️
         self._sched_reminders.push(
             schedreminder.SchedReminder(reminder_id, due))
 
+    @log_exc
     async def _check_bday(self):
         last_day = None
         checked = set()
