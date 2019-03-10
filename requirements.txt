@@ -1,2 +1,2 @@
-dumbot
-pytz
+dumbot~=1.4
+pytz~=2018.9

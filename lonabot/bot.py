@@ -4,18 +4,11 @@ import random
 import re
 from datetime import datetime
 
+import dumbot
 import pytz
-from dumbot import Bot
 
-from . import utils, heap, schedreminder
-from .constants import MAX_REMINDERS, MAX_TZ_STEP
-
-
-def cmd(text):
-    def decorator(f):
-        f._trigger = text
-        return f
-    return decorator
+from . import utils, heap, schedreminder, birthdays
+from .constants import MAX_REMINDERS, MAX_BIRTHDAYS, MAX_TZ_STEP
 
 
 def limited(f):
@@ -30,6 +23,21 @@ def limited(f):
                                         'reminders… Sorry about that')
     return wrapped
 
+# TODO Factor these out
+
+
+def birthday_limited(f):
+    @functools.wraps(f)
+    async def wrapped(self, update):
+        count = self.db.get_birthday_count(update.message.chat.id)
+        if count < MAX_BIRTHDAYS:
+            await f(self, update)
+        else:
+            await self.sendMessage(chat_id=update.message.chat.id,
+                                   text='Looks like you already have enough '
+                                        'birthdays saved… Sorry about that')
+    return wrapped
+
 
 SAY_WHAT = (
     'Say what?', "Sorry I didn't understand!", 'Uhm?', 'Need anything?',
@@ -38,8 +46,7 @@ SAY_WHAT = (
     "True randomness doesn't always look that random…"
 )
 
-HALF_AT = 0
-HALF_IN = 1
+HALF_AT, HALF_IN, CONV_BD = range(3)
 
 MAX_DELAY_TIME = 365 * 24 * 60 * 60
 MAX_TZ_DELTA = 12 * 60 * 60
@@ -71,11 +78,11 @@ GOOD_BYE = [
 ]
 
 
-class Lonabot(Bot):
+class Lonabot(dumbot.Bot):
     def __init__(self, token, db):
         super().__init__(token, timeout=10 * 60)
         self._cmd = []
-        self._half_cmd = {}
+        self._conversation = {}
         self._sched_reminders = None
         self._check_sched_task = None
         self.me = None
@@ -108,7 +115,7 @@ class Lonabot(Bot):
             pass
 
     async def on_update(self, update):
-        half, reply_id = self._half_cmd.pop(
+        conv, data = self._conversation.pop(
             update.message.chat.id, (None, None))
 
         if not update.message.text:
@@ -119,21 +126,28 @@ class Lonabot(Bot):
                 await method(update)
                 return
 
-        if not update.message.reply_to_message.message_id:
-            update.message.reply_to_message.message_id = reply_id
+        if conv in (HALF_AT, HALF_IN) \
+                and not update.message.reply_to_message.message_id:
+            update.message.reply_to_message.message_id = data
 
-        if half is HALF_AT:
+        if conv is HALF_AT:
             update.message.text = f'/remindat {update.message.text}'
             await self._remindat(update)
-        elif half is HALF_IN:
+        elif conv is HALF_IN:
             update.message.text = f'/remindin {update.message.text}'
             await self._remindin(update)
+        elif conv is CONV_BD:
+            await self._add_bday(update, data)
         elif update.message.chat.type == 'private':
             await self.sendMessage(chat_id=update.message.from_.id,
                                    text=random.choice(SAY_WHAT))
 
-    @cmd(r'/(start|help)')
-    async def _start(self, update):
+    @dumbot.command
+    async def help(self, update):
+        await self.start(update)
+
+    @dumbot.command
+    async def start(self, update):
         await self.sendMessage(
             chat_id=update.message.chat.id,
             text=f'''
@@ -160,13 +174,13 @@ Made with love by @Lonami and hosted by Richard ❤️
 '''.strip(), parse_mode='markdown')
 
     @limited
-    @cmd(r'/remindin')
-    async def _remindin(self, update):
+    @dumbot.command
+    async def remindin(self, update):
         when = update.message.text.split(maxsplit=1)
         reply_id = update.message.reply_to_message.message_id or None
 
         if len(when) == 1:
-            self._half_cmd[update.message.chat.id] = (HALF_IN, reply_id)
+            self._conversation[update.message.chat.id] = (HALF_IN, reply_id)
             await self.sendMessage(chat_id=update.message.chat.id,
                                    text='In when? :p')
             return
@@ -187,14 +201,14 @@ Made with love by @Lonami and hosted by Richard ❤️
                                    text=f'Got it! Will remind in {spelt}')
 
     @limited
-    @cmd(r'/remindat')
-    async def _remindat(self, update):
+    @dumbot.command
+    async def remindat(self, update):
         delta = self.db.get_time_delta(update.message.from_.id)
         reply_id = update.message.reply_to_message.message_id or None
 
         due = update.message.text.split(maxsplit=1)
         if len(due) == 1:
-            self._half_cmd[update.message.chat.id] = (HALF_AT, reply_id)
+            self._conversation[update.message.chat.id] = (HALF_AT, reply_id)
             await self.sendMessage(chat_id=update.message.chat.id,
                                    text='At what time? :p')
             return
@@ -231,8 +245,8 @@ Made with love by @Lonami and hosted by Richard ❤️
             await self.sendMessage(chat_id=update.message.chat.id,
                                    text='Got it! Will remind you later')
 
-    @cmd(r'/tz')
-    async def _tz(self, update):
+    @dumbot.command
+    async def tz(self, update):
         tz = update.message.text.split(maxsplit=1)
         if len(tz) == 1:
             await self.sendMessage(
@@ -283,8 +297,8 @@ Made with love by @Lonami and hosted by Richard ❤️
                                text=f"Got it! There's a difference of "
                                     f"{delta} seconds between you and I :D")
 
-    @cmd(r'/status')
-    async def _status(self, update):
+    @dumbot.command
+    async def status(self, update):
         reminders = list(self.db.iter_reminders(update.message.chat.id))
         delta = self.db.get_time_delta(update.message.from_.id)
         if len(reminders) == 0:
@@ -313,10 +327,23 @@ Made with love by @Lonami and hosted by Richard ❤️
         await self.sendMessage(chat_id=update.message.chat.id, text=text,
                                parse_mode='html')
 
-    @cmd(r'/clear')
-    async def _clear(self, update):
+    @dumbot.command
+    async def clear(self, update):
         chat_id = update.message.chat.id
         from_id = update.message.from_.id
+        which = update.message.text.split(maxsplit=1)
+        if len(which) == 1:
+            await self.sendMessage(
+                chat_id=chat_id,
+                text='Please specify "all", "next", "bday" or '
+                     'the number shown in /status (no quotes!)'
+            )
+            return
+
+        which = which[1].lower()
+        if which == 'bday':
+            return await self._clear_bday(update)
+
         have = self.db.get_reminder_count(chat_id)
         if not have:
             shrug = b'\xf0\x9f\xa4\xb7\xe2\x80\x8d\xe2\x99\x80\xef\xb8\x8f'
@@ -326,17 +353,7 @@ Made with love by @Lonami and hosted by Richard ❤️
             )
             return
 
-        which = update.message.text.split(maxsplit=1)
-        if len(which) == 1:
-            await self.sendMessage(
-                chat_id=chat_id,
-                text='Please specify "all", "next" or '
-                     'the number shown in /status (no quotes!)'
-            )
-            return
-
         text = 'Beep boop, logic error - bug my owner to fix me'
-        which = which[1].lower()
         if which == 'all':
             self.db.clear_reminders(chat_id, from_id)
             if chat_id == from_id:
@@ -368,6 +385,119 @@ Made with love by @Lonami and hosted by Richard ❤️
                 text = 'Er, that was not a valid number?'
 
         await self.sendMessage(chat_id=chat_id, text=text)
+
+    # Birthdays
+
+    # Note: we assume Telegram doesn't let send people arbitrary payload.
+    #       Otherwise, they could bypass this main command and just send data.
+    #       We also rely on this fact to clear birthdays.
+    @birthday_limited
+    @dumbot.command
+    async def remindbday(self, update):
+        await self.sendMessage(
+            chat_id=update.message.chat.id,
+            text="Let's add a birthday! First, "
+                 "select your friend's birthday month",
+            reply_markup=birthdays.MONTH_MARKUP
+        )
+
+    @dumbot.inline_button(r'm(\d+)')
+    async def month(self, update, match):
+        message = update.callback_query.message
+        await self.editMessageText(
+            chat_id=message.chat.id,
+            message_id=message.message_id,
+            text='Now please select the day of their birthday, '
+                 'or click the name of the month to change it',
+            reply_markup=birthdays.MONTH_DAY_MARKUP[int(match.group(1)) - 1]
+        )
+
+    @dumbot.inline_button(r'y')
+    async def year(self, update, match):
+        message = update.callback_query.message
+        await self.editMessageText(
+            chat_id=message.chat.id,
+            message_id=message.message_id,
+            text='Different month? No problem :) Please select '
+                 'the month of their birthday once again',
+            reply_markup=birthdays.MONTH_MARKUP
+        )
+
+    @dumbot.inline_button(r'm(\d+)d(\d+)')
+    async def day(self, update, match):
+        message = update.callback_query.message
+        self._conversation[message.chat.id] = CONV_BD, match.groups()
+        await self.editMessageText(
+            chat_id=message.chat.id,
+            message_id=message.message_id,
+            text='Almost done! Forward me a message sent by that '
+                 'person or send me their name so that I can remind '
+                 'you about them with a nice click-able mention ^^'
+        )
+
+    async def _add_bday(self, update, data):
+        month, day = data
+        who = update.message.forward_from
+        if not who:
+            text = "They don't have Telegram, huh? You should tell "\
+                   "them to join! Anyway, I've added the reminder!"
+        elif who.id == self._me.id:
+            text = "That's sweet, but that's not my birthday ❤"
+        elif who.id == update.message.from_.id:
+            text = "You need a reminder for your own birthday? "\
+                   "Okay, I won't judge :) -- Reminder added!"
+        else:
+            text = 'Consider it done! I have added the reminder'
+
+        self.db.add_birthday(
+            creator_id=update.message.chat.id,
+            month=month,
+            day=day,
+            person_id=who.id or None,
+            person_name=who.first_name or update.message.text
+        )
+        await self.sendMessage(
+            chat_id=update.message.chat.id,
+            text=text
+        )
+
+    async def _clear_bday(self, update):
+        count = self.db.get_birthday_count(update.message.chat.id)
+        if not count:
+            await self.sendMessage(
+                chat_id=update.message.chat.id,
+                text='You have not saved any birthday with me yet'
+            )
+            return
+
+        await self.sendMessage(
+            chat_id=update.message.chat.id,
+            text='Which birthday do you want to remove?',
+            reply_markup=birthdays.build_clear_markup(
+                self.db.iter_birthdays(update.message.chat.id))
+        )
+
+    @dumbot.inline_button(r'c(\d+)')
+    async def _delete_bday(self, update, match):
+        self.db.delete_birthday(int(match.group(1)))
+
+        message = update.callback_query.message
+        count = self.db.get_birthday_count(message.chat.id)
+        if not count:
+            await self.sendMessage(
+                chat_id=message.chat.id,
+                text='I have deleted all your saved birthdays now :)'
+            )
+            return
+
+        await self.editMessageText(
+            chat_id=message.chat.id,
+            message_id=message.message_id,
+            text='Gone! Any other to remove?',
+            reply_markup=birthdays.build_clear_markup(
+                self.db.iter_birthdays(update.message.chat.id))
+
+        )
 
     async def _remind(self, reminder):
         kwargs = {}

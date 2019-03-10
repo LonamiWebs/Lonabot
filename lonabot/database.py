@@ -2,11 +2,14 @@ import collections
 import sqlite3
 import threading
 
-DB_VERSION = 3
+DB_VERSION = 4
 
 
 Reminder = collections.namedtuple(
     'Reminder', 'id chat_id due text reply_to creator_id')
+
+Birthday = collections.namedtuple(
+    'Birthday', 'id creator_id month day person_id person_name')
 
 
 class Database:
@@ -39,6 +42,14 @@ class Database:
                       'Text TEXT NOT NULL,'
                       'ReplyTo INTEGER,'
                       'CreatorID INTEGER NOT NULL)')
+
+            c.execute('CREATE TABLE Birthdays('
+                      'ID INTEGER PRIMARY KEY AUTOINCREMENT,'
+                      'CreatorID INTEGER NOT NULL,'
+                      'Month INTEGER NOT NULL,'
+                      'Day INTEGER NOT NULL,'
+                      'PersonID INTEGER,'
+                      'PersonName TEXT)')
 
             self._save()
         c.close()
@@ -82,6 +93,15 @@ class Database:
         if old == 2:
             c.execute('ALTER TABLE Reminders ADD CreatorID INTEGER '
                       'NOT NULL DEFAULT 0')
+            old = 3
+        if old == 3:
+            c.execute('CREATE TABLE Birthdays('
+                      'ID INTEGER PRIMARY KEY AUTOINCREMENT,'
+                      'CreatorID INTEGER NOT NULL,'
+                      'Month INTEGER NOT NULL,'
+                      'Day INTEGER NOT NULL,'
+                      'PersonID INTEGER,'
+                      'PersonName TEXT)')
 
         c.close()
 
@@ -172,3 +192,40 @@ class Database:
         c.close()
         self._save()
         return Reminder(*row) if row else None
+
+    def add_birthday(self, creator_id, month, day, person_id, person_name):
+        c = self._cursor()
+        c.execute(
+            'INSERT INTO Birthdays '
+            '(CreatorID, Month, Day, PersonID, PersonName) VALUES (?, ?, ?, ?, ?)',
+            (creator_id, month, day, person_id, person_name)
+        )
+        c.close()
+        self._save()
+
+    # TODO Factor these out (similar to get_reminder_count and iter_reminders)
+    def get_birthday_count(self, creator_id):
+        c = self._cursor()
+        c.execute('SELECT COUNT(*) FROM Birthdays WHERE CreatorID = ?',
+                  (creator_id,))
+        count = c.fetchone()[0]
+        c.close()
+        return count
+
+    def iter_birthdays(self, creator_id=None):
+        c = self._cursor()
+        if creator_id:
+            c.execute('SELECT * FROM Birthdays WHERE CreatorID = ? '
+                      'ORDER BY Month ASC, Day ASC', (creator_id,))
+        else:
+            c.execute('SELECT * FROM Birthdays ORDER BY Month ASC, Day ASC')
+
+        row = c.fetchone()
+        while row:
+            yield Birthday(*row)
+            row = c.fetchone()
+
+    def delete_birthday(self, birthday_id):
+        c = self._cursor()
+        c.execute('DELETE FROM Birthdays WHERE ID = ?', (birthday_id,))
+        c.close()
