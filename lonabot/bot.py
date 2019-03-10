@@ -131,10 +131,10 @@ class Lonabot(dumbot.Bot):
 
         if conv is HALF_AT:
             update.message.text = f'/remindat {update.message.text}'
-            await self._remindat(update)
+            await self.remindat(update)
         elif conv is HALF_IN:
             update.message.text = f'/remindin {update.message.text}'
-            await self._remindin(update)
+            await self.remindin(update)
         elif conv is CONV_BD:
             await self._add_bday(update, data)
         elif update.message.chat.type == 'private':
