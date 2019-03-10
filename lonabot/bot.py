@@ -434,14 +434,29 @@ Made with love by @Lonami and hosted by Richard ❤️
         )
 
     async def _add_bday(self, update, data):
+        def get_info():
+            fwd = update.message.forward_from
+            if fwd:
+                return fwd.id, fwd.username, fwd.first_name
+
+            for m in update.message.entities:
+                if m.type == 'mention':
+                    usr = update.message.text[m.offset:m.offset + m.length]
+                    return None, usr, usr
+                elif m.type == 'text_mention':
+                    return m.user.id, m.user.first_name, m.user.first_name
+
+            return None, None, update.message.text
+
+        who_id, who_username, who_name = get_info()
+
         month, day = data
-        who = update.message.forward_from
-        if not who:
+        if not who_id and not who_username:
             text = "They don't have Telegram, huh? You should tell "\
                    "them to join! Anyway, I've added the reminder!"
-        elif who.id == self._me.id:
+        elif who_id == self._me.id:
             text = "That's sweet, but that's not my birthday ❤"
-        elif who.id == update.message.from_.id:
+        elif who_id == update.message.from_.id:
             text = "You need a reminder for your own birthday? "\
                    "Okay, I won't judge :) -- Reminder added!"
         else:
@@ -451,8 +466,8 @@ Made with love by @Lonami and hosted by Richard ❤️
             creator_id=update.message.chat.id,
             month=month,
             day=day,
-            person_id=who.id or None,
-            person_name=who.first_name or update.message.text
+            person_id=who_id or None,
+            person_name=who_name
         )
         await self.sendMessage(
             chat_id=update.message.chat.id,
