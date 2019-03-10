@@ -1,8 +1,10 @@
 import asyncio
+import contextlib
 import functools
+import html
 import random
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import dumbot
 import pytz
@@ -98,6 +100,7 @@ class Lonabot(dumbot.Bot):
         self._conversation = {}
         self._sched_reminders = None
         self._check_sched_task = None
+        self._check_bday_task = None
         self.me = None
         self.db = db
 
@@ -108,15 +111,18 @@ class Lonabot(dumbot.Bot):
             for r in self.db.iter_reminders()
         )
         self._check_sched_task = self._loop.create_task(self._check_sched())
+        self._check_bday_task = self._loop.create_task(self._check_bday())
 
     async def disconnect(self):
         await super().disconnect()
 
         self._check_sched_task.cancel()
-        try:
+        with contextlib.suppress(asyncio.CancelledError):
             await self._check_sched_task
-        except asyncio.CancelledError:
-            pass
+
+        self._check_bday_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await self._check_bday_task
 
     async def on_update(self, update):
         conv, data = self._conversation.pop(
@@ -550,3 +556,50 @@ Made with love by @Lonami and hosted by Richard ❤️
     def _sched_reminder(self, reminder_id, due):
         self._sched_reminders.push(
             schedreminder.SchedReminder(reminder_id, due))
+
+    async def _check_bday(self):
+        last_day = None
+        checked = set()
+        while self._running:
+            day = datetime.utcnow()
+            if last_day != (day.month, day.day):
+                last_day = (day.month, day.day)
+                checked.clear()
+
+            for bday in self.db.iter_birthdays(month=day.month, day=day.day):
+                if bday.id not in checked:
+                    await self._remind_bday(bday, True)
+                    checked.add(bday.id)
+
+            day += timedelta(days=1)
+            for bday in self.db.iter_birthdays(month=day.month, day=day.day):
+                if bday.id not in checked:
+                    await self._remind_bday(bday, False)
+                    checked.add(bday.id)
+
+            await asyncio.sleep(6 * 60 * 60)
+
+    async def _remind_bday(self, bday, today):
+        name = html.escape(bday.person_name)
+        if name.lower().endswith('s'):
+            postfix = "'"
+        else:
+            postfix = "'s"
+
+        if bday.person_id:
+            mention = f'<a href="tg://user?id={bday.person_id}">{name}</a>'
+        else:
+            mention = name
+
+        if today:
+            text = f"Today it's {mention}{postfix} birthday! 🎉"
+        else:
+            text = f"Tomorrow it's {mention}{postfix} birthday. "\
+                   f"Did you get them a present yet 🎁?"
+
+        await self.sendMessage(
+            chat_id=bday.creator_id,
+            text=text,
+            parse_mode='html'
+        )
+        await asyncio.sleep(1)

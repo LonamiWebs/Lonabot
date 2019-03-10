@@ -214,13 +214,31 @@ class Database:
         c.close()
         return count
 
-    def iter_birthdays(self, creator_id=None):
+    def iter_birthdays(self, creator_id=None, month=None, day=None):
         c = self._cursor()
+
+        where = []
+        params = []
         if creator_id:
-            c.execute('SELECT * FROM Birthdays WHERE CreatorID = ? '
-                      'ORDER BY Month ASC, Day ASC', (creator_id,))
+            where.append('CreatorID = ?')
+            params.append(creator_id)
+
+        if month:
+            where.append('Month = ?')
+            params.append(month)
+
+        if day:
+            where.append('Day = ?')
+            params.append(day)
+
+        params = tuple(params)
+        if where:
+            where = 'WHERE ' + ' AND '.join(where)
         else:
-            c.execute('SELECT * FROM Birthdays ORDER BY Month ASC, Day ASC')
+            where = ''
+
+        c.execute(f'SELECT * FROM Birthdays {where} '
+                  'ORDER BY Month ASC, Day ASC', params)
 
         row = c.fetchone()
         while row:
