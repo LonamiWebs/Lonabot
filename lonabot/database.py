@@ -200,7 +200,7 @@ class Database:
         c.execute(
             'INSERT INTO Birthdays '
             '(CreatorID, Month, Day, PersonID, PersonName) VALUES (?, ?, ?, ?, ?)',
-            (creator_id, month, day, person_id, person_name)
+            (creator_id, month, day, person_id, (person_name or '(no name)')[:16])
         )
         c.close()
         self._save()
