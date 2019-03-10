@@ -13,10 +13,10 @@ from .constants import MAX_REMINDERS, MAX_BIRTHDAYS, MAX_TZ_STEP
 
 def limited(f):
     @functools.wraps(f)
-    async def wrapped(self, update):
+    async def wrapped(self, update, *args):
         count = self.db.get_reminder_count(update.message.chat.id)
         if count < MAX_REMINDERS:
-            await f(self, update)
+            await f(self, update, *args)
         else:
             await self.sendMessage(chat_id=update.message.chat.id,
                                    text='Looks like you already have enough '
@@ -28,10 +28,10 @@ def limited(f):
 
 def birthday_limited(f):
     @functools.wraps(f)
-    async def wrapped(self, update):
+    async def wrapped(self, update, *args):
         count = self.db.get_birthday_count(update.message.chat.id)
         if count < MAX_BIRTHDAYS:
-            await f(self, update)
+            await f(self, update, *args)
         else:
             await self.sendMessage(chat_id=update.message.chat.id,
                                    text='Looks like you already have enough '
@@ -41,9 +41,9 @@ def birthday_limited(f):
 
 def private(f):
     @functools.wraps(f)
-    async def wrapped(self, update):
+    async def wrapped(self, update, *args):
         if update.message.chat.type == 'private':
-            await f(self, update)
+            await f(self, update, *args)
         else:
             await self.sendMessage(chat_id=update.message.chat.id,
                                    text=f'Please [message me in private]'
@@ -125,16 +125,12 @@ class Lonabot(dumbot.Bot):
         if not update.message.text:
             return
 
-        if conv in (HALF_AT, HALF_IN) \
-                and not update.message.reply_to_message.message_id:
-            update.message.reply_to_message.message_id = data
-
         if conv is HALF_AT:
             update.message.text = f'/remindat {update.message.text}'
-            await self.remindat(update)
+            await self.remindat(update, data)
         elif conv is HALF_IN:
             update.message.text = f'/remindin {update.message.text}'
-            await self.remindin(update)
+            await self.remindin(update, data)
         elif conv is CONV_BD:
             await self._add_bday(update, data)
         elif update.message.chat.type == 'private':
@@ -174,9 +170,10 @@ Made with love by @Lonami and hosted by Richard ❤️
 
     @limited
     @dumbot.command
-    async def remindin(self, update):
+    async def remindin(self, update, reply_id=None):
         when = update.message.text.split(maxsplit=1)
-        reply_id = update.message.reply_to_message.message_id or None
+        if not reply_id:
+            reply_id = update.message.reply_to_message.message_id or None
 
         if len(when) == 1:
             self._conversation[update.message.chat.id] = (HALF_IN, reply_id)
@@ -201,9 +198,10 @@ Made with love by @Lonami and hosted by Richard ❤️
 
     @limited
     @dumbot.command
-    async def remindat(self, update):
+    async def remindat(self, update, reply_id=None):
         delta = self.db.get_time_delta(update.message.from_.id)
-        reply_id = update.message.reply_to_message.message_id or None
+        if not reply_id:
+            reply_id = update.message.reply_to_message.message_id or None
 
         due = update.message.text.split(maxsplit=1)
         if len(due) == 1:
