@@ -76,7 +76,8 @@ SAY_WHAT = (
 
 HALF_AT, HALF_IN, CONV_BD = range(3)
 
-MAX_DELAY_TIME = 365 * 24 * 60 * 60
+LONG_DELAY_TIME = 1 * 365 * 24 * 60 * 60
+MAX_DELAY_TIME = 5 * 365 * 24 * 60 * 60
 MAX_TZ_DELTA = 12 * 60 * 60
 CAN_U_DONT = 'CAADAgAD9RsAAuVGLgIs0peZGJA21AI'
 
@@ -211,8 +212,13 @@ Made with love by @Lonami and hosted by Richard ❤️
             reminder_id = self.db.add_reminder(update, due, text, reply_id)
             self._sched_reminder(reminder_id, due)
             spelt = utils.spell_delay(delay, prefix=False)
-            await self.sendMessage(chat_id=update.message.chat.id,
-                                   text=f'Got it! Will remind in {spelt}')
+            if delay > LONG_DELAY_TIME:
+                text = f'I cannot guarantee I will live '\
+                       f'for {spelt} but I will try my best!'
+            else:
+                text = f'Got it! Will remind in {spelt}'
+
+            await self.sendMessage(chat_id=update.message.chat.id, text=text)
 
     @limited
     @dumbot.command
