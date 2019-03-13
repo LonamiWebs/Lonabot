@@ -286,7 +286,7 @@ Made with love by @Lonami and hosted by Richard ❤️
             try:
                 # TODO This won't consider daylight saving time BS
                 # TODO Do this delta thing better
-                delta = int(pytz.timezone(tz[1]).utcoffset(
+                delta = int(pytz.timezone(tz[1].title()).utcoffset(
                     datetime.utcnow()).total_seconds())
 
             except pytz.UnknownTimeZoneError:
