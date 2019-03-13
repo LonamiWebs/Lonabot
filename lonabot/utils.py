@@ -14,13 +14,13 @@ _UNITS = {
 _DELAY_PARSE = re.compile(r'(\d+):(\d+)(?::(\d+))?')
 _UNIT_DELAY_PARSE = re.compile(r'\d+[ywdhms]?', re.IGNORECASE)
 
-_DUE_PARSE = re.compile(r'''
+_DUE_PARSE_FWD = re.compile(r'''
     (?:
-        (\d+)       # day
+        (\d{1,2})       # day
         (?:
-            [/-](\d+)  # month
+            [/-](\d{1,2})  # month
             (?:     # year
-                [/-](\d+)
+                [/-](\d{4})
             )?
         )?
         \s+
@@ -29,7 +29,26 @@ _DUE_PARSE = re.compile(r'''
     (?::(\d+))?  # minutes
     (?::(\d+))?  # seconds''', re.VERBOSE)
 
-_DAY_PARSE = re.compile(r'(\d+)[/-](\d+)(?:[/-](\d+))?')
+# Darn you, tan
+_DUE_PARSE_REV = re.compile(r'''
+    (?:
+        (\d{4})       # year
+        (?:
+            [/-](\d{1,2})  # month
+            (?:     # day
+                [/-](\d{1,2})
+            )?
+        )?
+        \s+
+    )?
+    (\d+)        # hours
+    (?::(\d+))?  # minutes
+    (?::(\d+))?  # seconds''', re.VERBOSE)
+
+# Forward, DD/MM/YYYY
+_DAY_PARSE_FWD = re.compile(r'(\d{1,2})[/-](\d{1,2})(?:[/-](\d{4}))?')
+# Backward, YYYY/MM/DD
+_DAY_PARSE_REV = re.compile(r'(\d{4})[/-](\d{1,2})(?:[/-](\d{1,2}))?')
 
 
 def parse_delay(when):
@@ -90,19 +109,35 @@ def parse_due(due, delta):
                 datetime.now(timezone.utc)).total_seconds()
 
     except (ValueError, AttributeError):
-        m = _DAY_PARSE.match(due)
-        if m:
-            day, month, year = (int(x or 0) for x in m.groups())
-            hour = mins = sec = 0
-        else:
-            m = _DUE_PARSE.match(due)
-            if not m:
-                return None, due
+        def get_parts():
+            # We could return itertools.chain(iter1, repeat three 0's),
+            # but the lists are only going to be six items long anyway.
+            m = _DAY_PARSE_FWD.match(due)
+            if m:
+                return m.end(), [int(x or 0) for x in m.groups()] + [0, 0, 0]
 
-            day, month, year, hour, mins, sec = (
-                int(x or 0) for x in m.groups())
+            m = _DAY_PARSE_REV.match(due)
+            if m:
+                return m.end(), [int(x or 0) for x in reversed(m.groups())] + [0, 0, 0]
 
-        text = due[m.end():]
+            m = _DUE_PARSE_FWD.match(due)
+            if m:
+                return m.end(), [int(x or 0) for x in m.groups()]
+
+            m = _DUE_PARSE_REV.match(due)
+            if m:
+                res = [int(x or 0) for x in m.groups()]
+                res[0:3] = reversed(res[0:3])
+                return m.end(), res
+
+            return None, None
+
+        end, parts = get_parts()
+        if end is None:
+            return None, due
+
+        day, month, year, hour, mins, sec = parts
+        text = due[end:]
 
     if delta is None:
         raise TypeError('delta was None (and due had no TZ info)')
