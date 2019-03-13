@@ -1,4 +1,5 @@
 import calendar
+import itertools
 import re
 from datetime import datetime, timedelta, timezone
 
@@ -14,41 +15,9 @@ _UNITS = {
 _DELAY_PARSE = re.compile(r'(\d+):(\d+)(?::(\d+))?')
 _UNIT_DELAY_PARSE = re.compile(r'\d+[ywdhms]?', re.IGNORECASE)
 
-_DUE_PARSE_FWD = re.compile(r'''
-    (?:
-        (\d{1,2})       # day
-        (?:
-            [/-](\d{1,2})  # month
-            (?:     # year
-                [/-](\d{4})
-            )?
-        )?
-        \s+
-    )?
-    (\d+)        # hours
-    (?::(\d+))?  # minutes
-    (?::(\d+))?  # seconds''', re.VERBOSE)
-
-# Darn you, tan
-_DUE_PARSE_REV = re.compile(r'''
-    (?:
-        (\d{4})       # year
-        (?:
-            [/-](\d{1,2})  # month
-            (?:     # day
-                [/-](\d{1,2})
-            )?
-        )?
-        \s+
-    )?
-    (\d+)        # hours
-    (?::(\d+))?  # minutes
-    (?::(\d+))?  # seconds''', re.VERBOSE)
-
-# Forward, DD/MM/YYYY
-_DAY_PARSE_FWD = re.compile(r'(\d{1,2})[/-](\d{1,2})(?:[/-](\d{4}))?')
-# Backward, YYYY/MM/DD
-_DAY_PARSE_REV = re.compile(r'(\d{4})[/-](\d{1,2})(?:[/-](\d{1,2}))?')
+_DUE_DATE_DMY = re.compile(r'(\d{1,2})[/-](\d{1,2})(?:[/-](\d{4}))?')
+_DUE_DATE_YMD = re.compile(r'(\d{4})[/-](\d{1,2})(?:[/-](\d{1,2}))?')
+_DUE_TIME = re.compile(r'(\d+)(?::(\d+))?(?::(\d+))?')
 
 
 def parse_delay(when):
@@ -89,12 +58,79 @@ def parse_delay(when):
     return int(delay), text
 
 
+def _parse_due_date(part):
+    """
+    Parse a part of text as a date, in either DD/MM/YYYY or YYYY/MM/DD format.
+    """
+    m = _DUE_DATE_DMY.match(part)
+    if m:
+        return reversed(m.groups())
+
+    m = _DUE_DATE_YMD.match(part)
+    if m:
+        return m.groups()
+
+
+def _parse_due_time(part):
+    """
+    Parse a part of text as a time, only the hours being mandatory.
+    """
+    m = _DUE_TIME.match(part)
+    if m:
+        return m.groups()
+
+
+def _parse_date_parts(due):
+    """
+    Parse the entire due text as  `(date tuple, time tuple, text)`.
+    This tries first date and then time optionally, and first time
+    and then date optionally (4 combinations, 8 if we consider year
+    or day first in the date).
+
+    Note that the tuples contain strings or a possibly false-y value,
+    so the caller is responsible for asserting what they get.
+    """
+    empty = (0, 0, 0)
+    parts = due.split(maxsplit=2)
+
+    # Date then time
+    date_part = _parse_due_date(parts[0])
+    if date_part:
+        if len(parts) == 1:
+            return date_part, empty, ''
+
+        time_part = _parse_due_time(parts[1])
+        if time_part:
+            return date_part, time_part, parts[2] if len(parts) > 2 else ''
+        else:
+            parts = due.split(maxsplit=1)
+            return date_part, empty, parts[1]
+
+    # Time then date
+    time_part = _parse_due_time(parts[0])
+    if time_part:
+        if len(parts) == 1:
+            return empty, time_part, ''
+
+        date_part = _parse_due_date(parts[1])
+        if date_part:
+            return date_part, time_part, parts[2] if len(parts) > 2 else ''
+        else:
+            parts = due.split(maxsplit=1)
+            return empty, time_part, parts[1]
+
+    return empty, empty, due
+
+
 def parse_due(due, delta):
     try:
         try:
             d, t = due.split(maxsplit=1)
         except ValueError:
             d, t = due, ''
+
+        if not any(x in d for x in 'tTzZ+'):
+            raise ValueError('not bothering to check for ISO compliance')
 
         d = datetime.fromisoformat(d)
 
@@ -109,35 +145,12 @@ def parse_due(due, delta):
                 datetime.now(timezone.utc)).total_seconds()
 
     except (ValueError, AttributeError):
-        def get_parts():
-            # We could return itertools.chain(iter1, repeat three 0's),
-            # but the lists are only going to be six items long anyway.
-            m = _DAY_PARSE_FWD.match(due)
-            if m:
-                return m.end(), [int(x or 0) for x in m.groups()] + [0, 0, 0]
+        date, time, text = _parse_date_parts(due)
+        year, month, day, hour, mins, sec = (
+            int(x or 0) for x in itertools.chain(date, time))
 
-            m = _DAY_PARSE_REV.match(due)
-            if m:
-                return m.end(), [int(x or 0) for x in reversed(m.groups())] + [0, 0, 0]
-
-            m = _DUE_PARSE_FWD.match(due)
-            if m:
-                return m.end(), [int(x or 0) for x in m.groups()]
-
-            m = _DUE_PARSE_REV.match(due)
-            if m:
-                res = [int(x or 0) for x in m.groups()]
-                res[0:3] = reversed(res[0:3])
-                return m.end(), res
-
-            return None, None
-
-        end, parts = get_parts()
-        if end is None:
+        if not any((year, month, day, hour, mins, sec)):
             return None, due
-
-        day, month, year, hour, mins, sec = parts
-        text = due[end:]
 
     if delta is None:
         raise TypeError('delta was None (and due had no TZ info)')
