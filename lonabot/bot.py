@@ -114,11 +114,9 @@ class Lonabot(dumbot.Bot):
         self._sched_reminders = None
         self._check_sched_task = None
         self._check_bday_task = None
-        self.me = None
         self.db = db
 
     async def init(self):
-        self.me = await self.getMe()
         self._sched_reminders = heap.Heap(
             schedreminder.SchedReminder(r.id, r.due)
             for r in self.db.iter_reminders()
@@ -165,7 +163,7 @@ class Lonabot(dumbot.Bot):
         await self.sendMessage(
             chat_id=update.message.chat.id,
             text=f'''
-Hi! I'm {self.me.first_name.title()} and running in "reminder" mode.
+Hi! I'm {self._me.first_name.title()} and running in "reminder" mode.
 
 You can set reminders by using:
 `/remindin 1h30m Optional text`
