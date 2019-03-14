@@ -106,6 +106,14 @@ GOOD_BYE = [
     'Sayonara',
 ]
 
+FACES = [
+    '^^',
+    ':)',
+    ';)',
+    ':D',
+    '❤',
+]
+
 
 class Lonabot(dumbot.Bot):
     def __init__(self, token, db):
@@ -114,9 +122,17 @@ class Lonabot(dumbot.Bot):
         self._sched_reminders = None
         self._check_sched_task = None
         self._check_bday_task = None
+        self._thanks = None
         self.db = db
 
     async def init(self):
+        self._thanks = re.compile(
+            rf'(?i)(ty|thank(s|\s*you))'
+            rf'\s*(vm|very\s*much)?'
+            rf'\s*@?({self._me.first_name}|{self._me.username})'
+            rf'[\n .!]*$'
+        ).match
+
         self._sched_reminders = heap.Heap(
             schedreminder.SchedReminder(r.id, r.due)
             for r in self.db.iter_reminders()
@@ -150,6 +166,12 @@ class Lonabot(dumbot.Bot):
             await self.remindin(update, data)
         elif conv is CONV_BD:
             await self._add_bday(update, data)
+        elif self._thanks(update.message.text):
+            await self.sendMessage(
+                chat_id=update.message.chat.id,
+                text=f"You're welcome {update.message.from_.first_name} "
+                     f"{random.choice(FACES)}"
+            )
         elif update.message.chat.type == 'private':
             await self.sendMessage(chat_id=update.message.from_.id,
                                    text=random.choice(SAY_WHAT))
