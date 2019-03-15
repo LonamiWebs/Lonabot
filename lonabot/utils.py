@@ -14,14 +14,14 @@ _UNITS = {
 
 _DELAY_PARSE = re.compile(r'(\d+):(\d+)(?::(\d+))?')
 _UNIT_DELAY_PARSE = re.compile(
-    r'\s*(\d)+\s*'
+    r'\s*(\d+)\s*(?:'
     r'(y(?:ea)?r?'
     r'|w(?:ee)?k?'
     r'|d(?:ay)?'
     r'|h(?:ou)?r?'
-    r'|m(?:in(?:ute)?s?)?'
-    r'|s(?:ec(?:ond)?s?)?'
-    r')?(?=\b|\d)',
+    r'|m(?:in(?:ute)?)?'
+    r'|s(?:ec(?:ond)?)?'
+    r')s?)?(?=\b|\d)',
     re.IGNORECASE
 )
 
@@ -60,7 +60,8 @@ def parse_delay(when):
             if not m:
                 break
 
-            delay += int(m.group(1)) * _UNITS[m.group(2)[0].lower()]
+            unit = m.group(2) or 'm'
+            delay += int(m.group(1)) * _UNITS[unit[0].lower()]
             when = when[m.end():]
 
     # when has become text by now
