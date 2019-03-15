@@ -401,26 +401,20 @@ Made with love by @Lonami and hosted by Richard ❤️
             else:
                 text = 'Poof \U0001f4ad! All your reminders here be gone!'
         elif which == 'next':
-            stat = self.db.clear_nth_reminder(chat_id, from_id, 0)
-            if stat == -1:
-                text = 'The next reminder is not yours!'
-            elif stat == 0:
-                text = 'You had no reminders here'
-            elif stat == 1:
+            if self.db.clear_nth_reminder(chat_id, from_id, 0):
                 text = f'{random.choice(GOOD_BYE)} next reminder!'
+            else:
+                text = 'You had no reminders here'
         else:
             try:
                 which = int(which) - 1
                 if which < 0:
                     raise ValueError('Out of bounds')
 
-                stat = self.db.clear_nth_reminder(chat_id, from_id, which)
-                if stat == -1:
-                    text = 'That reminder does not belong to you!'
-                elif stat == 0:
-                    text = "You don't have that many reminders here…"
-                elif stat == 1:
+                if self.db.clear_nth_reminder(chat_id, from_id, which):
                     text = 'Got it! The reminder is gone'
+                else:
+                    text = "You don't have that many reminders here…"
             except ValueError:
                 text = 'Er, that was not a valid number?'
 

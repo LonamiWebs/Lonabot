@@ -135,26 +135,19 @@ class Database:
 
     def clear_nth_reminder(self, chat_id, from_id, n):
         c = self._cursor()
-        c.execute('SELECT * FROM Reminders WHERE ChatID = ? '
-                  'ORDER BY Due ASC', (chat_id,))
+        c.execute('SELECT * FROM Reminders WHERE ChatID = ? AND '
+                  'CreatorID = ? ORDER BY Due ASC', (chat_id, from_id))
         row = c.fetchone()
         while row and n:
             n -= 1
             row = c.fetchone()
 
         if row:
-            row = Reminder(*row)
-            if row.creator_id == from_id:
-                stat = +1
-                c.execute('DELETE FROM Reminders WHERE ID = ?', (row.id,))
-            else:
-                stat = -1
-        else:
-            stat = 0
+            c.execute('DELETE FROM Reminders WHERE ID = ?', (row[0],))
 
         c.close()
         self._save()
-        return stat
+        return row is not None
 
     def iter_reminders(self, chat_id=None, from_id=None):
         c = self._cursor()
