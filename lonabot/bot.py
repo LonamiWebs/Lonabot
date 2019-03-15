@@ -340,23 +340,23 @@ Made with love by @Lonami and hosted by Richard ❤️
 
     @dumbot.command
     async def status(self, update):
-        reminders = list(self.db.iter_reminders(update.message.chat.id))
-        delta = self.db.get_time_delta(update.message.from_.id)
+        chat_id = update.message.chat.id
+        from_id = update.message.from_.id
+
+        reminders = list(self.db.iter_reminders(chat_id, from_id))
+        delta = self.db.get_time_delta(from_id)
         if len(reminders) == 0:
-            text = "You don't have any reminder set yet. Less work for me!"
+            text = "You don't have any reminder in this chat yet"
         elif len(reminders) == 1:
             reminder = reminders[0]
             due = utils.spell_due(reminder.due, delta)
             if reminder.text:
-                text = f'You have one reminder {due} for "{reminder.text}"'
+                text = f'You have one reminder {due} here for "{reminder.text}"'
             else:
-                text = f'You have one reminder {due}'
+                text = f'You have one reminder {due} here'
         else:
-            if len(reminders) == MAX_REMINDERS:
-                text = f'You are using all of your reminders:'
-            else:
-                text = f'You have {utils.spell_number(len(reminders))} ' \
-                       f'reminders:'
+            text = f'You have {utils.spell_number(len(reminders))} ' \
+                   f'reminders in this chat:'
 
             for i, reminder in enumerate(reminders, start=1):
                 due = utils.spell_due(reminder.due, delta)
@@ -365,8 +365,7 @@ Made with love by @Lonami and hosted by Richard ❤️
                     add = add[:39] + '…'
                 text += f'\n({i}) {due}, {add}'
 
-        await self.sendMessage(chat_id=update.message.chat.id, text=text,
-                               parse_mode='html')
+        await self.sendMessage(chat_id=chat_id, text=text, parse_mode='html')
 
     @dumbot.command
     async def clear(self, update):

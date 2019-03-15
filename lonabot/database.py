@@ -156,11 +156,14 @@ class Database:
         self._save()
         return stat
 
-    def iter_reminders(self, chat_id=None):
+    def iter_reminders(self, chat_id=None, from_id=None):
         c = self._cursor()
         if chat_id:
-            c.execute('SELECT * FROM Reminders WHERE ChatID = ? '
-                      'ORDER BY Due ASC', (chat_id,))
+            if not from_id:
+                raise ValueError('from_id must be given if chat_id is')
+
+            c.execute('SELECT * FROM Reminders WHERE ChatID = ? AND '
+                      'CreatorID = ? ORDER BY Due ASC', (chat_id, from_id))
         else:
             c.execute('SELECT * FROM Reminders ORDER BY Due ASC')
 
