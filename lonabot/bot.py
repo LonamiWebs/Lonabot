@@ -17,7 +17,7 @@ from .constants import MAX_REMINDERS, MAX_BIRTHDAYS, MAX_TZ_STEP
 def limited(f):
     @functools.wraps(f)
     async def wrapped(self, update, *args):
-        count = self.db.get_reminder_count(update.message.chat.id)
+        count = self.db.get_reminder_count(update.message.from_.id)
         if count < MAX_REMINDERS:
             await f(self, update, *args)
         else:
@@ -32,7 +32,7 @@ def limited(f):
 def birthday_limited(f):
     @functools.wraps(f)
     async def wrapped(self, update, *args):
-        count = self.db.get_birthday_count(update.message.chat.id)
+        count = self.db.get_birthday_count(update.message.from_.id)
         if count < MAX_BIRTHDAYS:
             await f(self, update, *args)
         else:
@@ -384,7 +384,7 @@ Made with love by @Lonami and hosted by Richard ❤️
         if which == 'bday':
             return await self._clear_bday(update)
 
-        have = self.db.get_reminder_count(chat_id)
+        have = self.db.get_reminder_count(from_id)
         if not have:
             shrug = b'\xf0\x9f\xa4\xb7\xe2\x80\x8d\xe2\x99\x80\xef\xb8\x8f'
             await self.sendMessage(  # ^ haha unicode

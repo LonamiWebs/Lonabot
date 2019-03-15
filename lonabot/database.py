@@ -118,10 +118,10 @@ class Database:
         self._save()
         return new_id
 
-    def get_reminder_count(self, chat_id):
+    def get_reminder_count(self, from_id):
         c = self._cursor()
-        c.execute('SELECT COUNT(*) FROM Reminders WHERE ChatID = ?',
-                  (chat_id,))
+        c.execute('SELECT COUNT(*) FROM Reminders WHERE CreatorID = ?',
+                  (from_id,))
         count = c.fetchone()[0]
         c.close()
         return count
