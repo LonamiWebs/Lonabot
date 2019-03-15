@@ -13,49 +13,58 @@ _UNITS = {
 }
 
 _DELAY_PARSE = re.compile(r'(\d+):(\d+)(?::(\d+))?')
-_UNIT_DELAY_PARSE = re.compile(r'\d+[ywdhms]?', re.IGNORECASE)
+_UNIT_DELAY_PARSE = re.compile(
+    r'\s*(\d)+\s*'
+    r'(y(?:ea)?r?'
+    r'|w(?:ee)?k?'
+    r'|d(?:ay)?'
+    r'|h(?:ou)?r?'
+    r'|m(?:in(?:ute)?s?)?'
+    r'|s(?:ec(?:ond)?s?)?'
+    r')?(?=\b|\d)',
+    re.IGNORECASE
+)
 
 _DUE_DATE_DMY = re.compile(r'(\d{1,2})[/-](\d{1,2})(?:[/-](\d{4}))?')
 _DUE_DATE_YMD = re.compile(r'(\d{4})[/-](\d{1,2})(?:[/-](\d{1,2}))?')
 _DUE_TIME = re.compile(r'(\d+)(?::(\d+))?(?::(\d+))?')
 
 
+def _parse_delay_iso(when):
+    try:
+        when, text = re.match(r'(\S+)(.*)', when).groups()
+    except AttributeError:
+        return 0, when
+
+    delay = parse_iso_duration(when)
+    if delay is not None:
+        return int(delay), text
+
+
 def parse_delay(when):
     m = _DELAY_PARSE.match(when)
     if m:
-        text = when[m.end():]
         hour = int(m.group(1))
         mins = int(m.group(2))
         secs = int(m.group(3) or 0)
         delay = (hour * 60 + mins) * 60 + secs
+        when = when[m.end():]
     else:
-        try:
-            when, text = re.match(r'(\S+)(.*)', when).groups()
-        except AttributeError:
-            return 0, when
+        iso = _parse_delay_iso(when)
+        if iso:
+            return iso
 
-        delay = parse_iso_duration(when)
-        if delay is not None:
-            return int(delay), text
-        else:
-            delay = 0.0
-
+        delay = 0.0
         while True:
             m = _UNIT_DELAY_PARSE.match(when)
             if not m:
                 break
 
-            step = m.group(0)
-            if step[-1].isdigit():
-                unit = 'm'
-            else:
-                unit = step[-1].lower()
-                step = step[:-1]
-
-            delay += int(step) * _UNITS[unit]
+            delay += int(m.group(1)) * _UNITS[m.group(2)[0].lower()]
             when = when[m.end():]
 
-    return int(delay), text
+    # when has become text by now
+    return int(delay), when.lstrip()
 
 
 def _parse_due_date(part):
