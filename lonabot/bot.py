@@ -74,7 +74,7 @@ SAY_WHAT = (
     "True randomness doesn't always look that random…"
 )
 
-HALF_AT, HALF_IN, CONV_BD = range(3)
+CONV_BD = 0
 
 LONG_DELAY_TIME = 1 * 365 * 24 * 60 * 60
 MAX_DELAY_TIME = 5 * 365 * 24 * 60 * 60
@@ -158,13 +158,7 @@ class Lonabot(dumbot.Bot):
         if not update.message.text:
             return
 
-        if conv is HALF_AT:
-            update.message.text = f'/remindat {update.message.text}'
-            await self.remindat(update, data)
-        elif conv is HALF_IN:
-            update.message.text = f'/remindin {update.message.text}'
-            await self.remindin(update, data)
-        elif conv is CONV_BD:
+        if conv is CONV_BD:
             await self._add_bday(update, data)
         elif self._thanks(update.message.text):
             await self.sendMessage(
@@ -215,9 +209,14 @@ Made with love by @Lonami and hosted by Richard ❤️
             reply_id = update.message.reply_to_message.message_id or None
 
         if len(when) == 1:
-            self._conversation[update.message.chat.id] = (HALF_IN, reply_id)
-            await self.sendMessage(chat_id=update.message.chat.id,
-                                   text='In when? :p')
+            msg = await self.sendMessage(chat_id=update.message.chat.id,
+                                         text='You forgot to specify when, silly 😉')
+
+            if update.message.chat.type != 'private':
+                await asyncio.sleep(10)
+                await self.deleteMessage(chat_id=update.message.chat.id,
+                                         message_id=msg.message_id)
+
             return
 
         delay, text = utils.parse_delay(when[1])
@@ -249,9 +248,13 @@ Made with love by @Lonami and hosted by Richard ❤️
 
         due = update.message.text.split(maxsplit=1)
         if len(due) == 1:
-            self._conversation[update.message.chat.id] = (HALF_AT, reply_id)
-            await self.sendMessage(chat_id=update.message.chat.id,
-                                   text='At what time? :p')
+            msg = await self.sendMessage(chat_id=update.message.chat.id,
+                                         text='You forgot to specify when, silly 😉')
+
+            if update.message.chat.type != 'private':
+                await asyncio.sleep(10)
+                await self.deleteMessage(chat_id=update.message.chat.id,
+                                         message_id=msg.message_id)
             return
 
         try:
