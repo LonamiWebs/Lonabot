@@ -90,6 +90,8 @@ GOOD_BYE = [
     'Donadagohvi',
     'Sbohem',
     'Farvel',
+    'Farväl',
+    'Hejdå',
     'Tot ziens',
     'Näkemiin',
     'Au revoir',
