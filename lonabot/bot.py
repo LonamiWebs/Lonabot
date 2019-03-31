@@ -252,7 +252,8 @@ Made with love by @Lonami and hosted by Richard ❤️
         due = update.message.text.split(maxsplit=1)
         if len(due) == 1:
             msg = await self.sendMessage(chat_id=update.message.chat.id,
-                                         text='You forgot to specify when, silly 😉')
+                                         text='You forgot to specify when, '
+                                              'silly 😉 (e.g. /remindat 17:30)')
 
             if update.message.chat.type != 'private':
                 await asyncio.sleep(10)
