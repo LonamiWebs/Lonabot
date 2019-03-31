@@ -212,7 +212,8 @@ Made with love by @Lonami and hosted by Richard ❤️
 
         if len(when) == 1:
             msg = await self.sendMessage(chat_id=update.message.chat.id,
-                                         text='You forgot to specify when, silly 😉')
+                                         text='You forgot to specify when, '
+                                              'silly 😉 (e.g. /remindin 1h30m)')
 
             if update.message.chat.type != 'private':
                 await asyncio.sleep(10)
