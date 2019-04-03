@@ -12,9 +12,12 @@ _UNITS = {
     's': 1.0
 }
 
-_DELAY_PARSE = re.compile(r'(\d+):(\d+)(?::(\d+))?')
+# Reuse floating number regex to reduce verbosity
+_F = r'(\d+(?:\.\d+)?)'
+
+_DELAY_PARSE = re.compile(fr'{_F}:{_F}(?::{_F})?')
 _UNIT_DELAY_PARSE = re.compile(
-    r'\s*(\d+)\s*(?:'
+    fr'\s*{_F}\s*(?:'
     r'(y(?:ea)?r?'
     r'|w(?:ee)?k?'
     r'|d(?:ay)?'
@@ -27,7 +30,7 @@ _UNIT_DELAY_PARSE = re.compile(
 
 _DUE_DATE_DMY = re.compile(r'(\d{1,2})[/-](\d{1,2})(?:[/-](\d{4}))?')
 _DUE_DATE_YMD = re.compile(r'(\d{4})[/-](\d{1,2})(?:[/-](\d{1,2}))?')
-_DUE_TIME = re.compile(r'(\d+)(?::(\d+))?(?::(\d+))?')
+_DUE_TIME = re.compile(fr'{_F}(?::{_F})?(?::{_F})?')
 
 
 def _parse_delay_iso(when):
@@ -44,9 +47,9 @@ def _parse_delay_iso(when):
 def parse_delay(when):
     m = _DELAY_PARSE.match(when)
     if m:
-        hour = int(m.group(1))
-        mins = int(m.group(2))
-        secs = int(m.group(3) or 0)
+        hour = float(m.group(1))
+        mins = float(m.group(2))
+        secs = float(m.group(3) or 0)
         delay = (hour * 60 + mins) * 60 + secs
         when = when[m.end():]
     else:
@@ -61,7 +64,7 @@ def parse_delay(when):
                 break
 
             unit = m.group(2) or 'm'
-            delay += int(m.group(1)) * _UNITS[unit[0].lower()]
+            delay += float(m.group(1)) * _UNITS[unit[0].lower()]
             when = when[m.end():]
 
     # when has become text by now
@@ -157,7 +160,7 @@ def parse_due(due, delta):
     except (ValueError, AttributeError):
         date, time, text = _parse_date_parts(due)
         year, month, day, hour, mins, sec = (
-            int(x or 0) for x in itertools.chain(date, time))
+            float(x or 0) for x in itertools.chain(date, time))
 
         if not any((year, month, day, hour, mins, sec)):
             return None, due
