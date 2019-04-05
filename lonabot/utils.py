@@ -160,7 +160,7 @@ def parse_due(due, delta):
     except (ValueError, AttributeError):
         date, time, text = _parse_date_parts(due)
         year, month, day, hour, mins, sec = (
-            float(x or 0) for x in itertools.chain(date, time))
+            int(x or 0) for x in itertools.chain(date, time))
 
         if not any((year, month, day, hour, mins, sec)):
             return None, due
