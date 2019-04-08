@@ -290,8 +290,9 @@ Made with love by @Lonami and hosted by Richard ❤️
         else:
             reminder_id = self.db.add_reminder(update, due, text, reply_id)
             self._sched_reminder(reminder_id, due)
+            spelt = utils.spell_due(due, delta)
             await self.sendMessage(chat_id=update.message.chat.id,
-                                   text='Got it! Will remind you later')
+                                   text=f'Got it! New reminder {spelt} saved')
 
     @dumbot.command
     async def tz(self, update):
