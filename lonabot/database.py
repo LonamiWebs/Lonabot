@@ -2,11 +2,11 @@ import collections
 import sqlite3
 import threading
 
-DB_VERSION = 4
+DB_VERSION = 5
 
 
 Reminder = collections.namedtuple(
-    'Reminder', 'id chat_id due text reply_to creator_id')
+    'Reminder', 'id chat_id due text reply_to creator_id file_type file_id')
 
 Birthday = collections.namedtuple(
     'Birthday', 'id creator_id month day person_id person_name')
@@ -41,7 +41,9 @@ class Database:
                       'Due TIMESTAMP NOT NULL,'
                       'Text TEXT NOT NULL,'
                       'ReplyTo INTEGER,'
-                      'CreatorID INTEGER NOT NULL)')
+                      'CreatorID INTEGER NOT NULL,'
+                      'FileType TEXT,'
+                      'FileID TEXT)')
 
             c.execute('CREATE TABLE Birthdays('
                       'ID INTEGER PRIMARY KEY AUTOINCREMENT,'
@@ -102,16 +104,21 @@ class Database:
                       'Day INTEGER NOT NULL,'
                       'PersonID INTEGER,'
                       'PersonName TEXT)')
+            old = 4
+        if old == 4:
+            c.execute('ALTER TABLE Reminders ADD FileType TEXT')
+            c.execute('ALTER TABLE Reminders ADD FileID TEXT')
 
         c.close()
 
-    def add_reminder(self, update, due, text, reply_id):
+    def add_reminder(self, *, update, due, text, file_type, file_id, reply_id):
         c = self._cursor()
         m = update.message
         c.execute(
             'INSERT INTO Reminders '
-            '(ChatID, CreatorID, Due, Text, ReplyTo) VALUES (?, ?, ?, ?, ?)',
-            (m.chat.id, m.from_.id, due, text.strip(), reply_id)
+            '(ChatID, CreatorID, Due, Text, FileType, FileID, ReplyTo) '
+            'VALUES (?, ?, ?, ?, ?, ?, ?)',
+            (m.chat.id, m.from_.id, due, text.strip(), file_type, file_id, reply_id)
         )
         new_id = c.lastrowid
         c.close()

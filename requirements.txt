@@ -1,2 +1,2 @@
-dumbot~=1.4
+dumbot~=1.4.2
 pytz~=2018.9

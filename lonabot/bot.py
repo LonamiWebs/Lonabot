@@ -157,12 +157,13 @@ class Lonabot(dumbot.Bot):
         conv, data = self._conversation.pop(
             update.message.chat.id, (None, None))
 
-        if not update.message.text:
+        text = update.message.text or update.message.caption
+        if not text:
             return
 
         if conv is CONV_BD:
             await self._add_bday(update, data)
-        elif self._thanks(update.message.text):
+        elif self._thanks(text):
             await self.sendMessage(
                 chat_id=update.message.chat.id,
                 text=f"You're welcome {update.message.from_.first_name} "
@@ -206,7 +207,8 @@ Made with love by @Lonami and hosted by Richard ❤️
     @limited
     @dumbot.command
     async def remindin(self, update, reply_id=None):
-        when = update.message.text.split(maxsplit=1)
+        text, file_type, file_id = utils.split_message(update.message)
+        when = text.split(maxsplit=1)
         if not reply_id:
             reply_id = update.message.reply_to_message.message_id or None
 
@@ -231,7 +233,14 @@ Made with love by @Lonami and hosted by Richard ❤️
                                    sticker=CAN_U_DONT)
         else:
             due = int(datetime.utcnow().timestamp() + delay)
-            reminder_id = self.db.add_reminder(update, due, text, reply_id)
+            reminder_id = self.db.add_reminder(
+                update=update,
+                due=due,
+                text=text,
+                file_type=file_type,
+                file_id=file_id,
+                reply_id=reply_id
+            )
             self._sched_reminder(reminder_id, due)
             spelt = utils.spell_delay(delay, prefix=False)
             if delay > LONG_DELAY_TIME:
@@ -249,7 +258,8 @@ Made with love by @Lonami and hosted by Richard ❤️
         if not reply_id:
             reply_id = update.message.reply_to_message.message_id or None
 
-        due = update.message.text.split(maxsplit=1)
+        text, file_type, file_id = utils.split_message(update.message)
+        due = text.split(maxsplit=1)
         if len(due) == 1:
             msg = await self.sendMessage(chat_id=update.message.chat.id,
                                          text='You forgot to specify when, '
@@ -288,7 +298,14 @@ Made with love by @Lonami and hosted by Richard ❤️
             await self.sendSticker(chat_id=update.message.chat.id,
                                    sticker=CAN_U_DONT)
         else:
-            reminder_id = self.db.add_reminder(update, due, text, reply_id)
+            reminder_id = self.db.add_reminder(
+                update=update,
+                due=due,
+                text=text,
+                file_type=file_type,
+                file_id=file_id,
+                reply_id=reply_id
+            )
             self._sched_reminder(reminder_id, due)
             spelt = utils.spell_due(due, delta)
             await self.sendMessage(chat_id=update.message.chat.id,
@@ -558,9 +575,14 @@ Made with love by @Lonami and hosted by Richard ❤️
         )
 
     async def _remind(self, reminder):
-        kwargs = {}
+        kwargs = {
+            'chat_id': reminder.chat_id,
+            'reply_to_message_id': reminder.reply_to
+        }
         if reminder.chat_id > 0:  # User?
-            text = reminder.text or 'Reminder'
+            text = reminder.text
+            if not text and not reminder.file_type:
+                text = 'Reminder'
         else:  # Group?
             kwargs['parse_mode'] = 'html'
             member = await self.getChatMember(
@@ -572,9 +594,15 @@ Made with love by @Lonami and hosted by Richard ❤️
             if reminder.text:
                 text += ': ' + reminder.text
 
-        await self.sendMessage(
-            chat_id=reminder.chat_id, text=text,
-            reply_to_message_id=reminder.reply_to, **kwargs)
+        if reminder.file_type:
+            method = getattr(self, f'send{reminder.file_type.title()}')
+            kwargs[reminder.file_type] = reminder.file_id
+            kwargs['caption'] = text
+        else:
+            method = self.sendMessage
+            kwargs['text'] = text
+
+        await method(**kwargs)
 
     @log_exc
     async def _check_sched(self):

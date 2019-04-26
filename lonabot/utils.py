@@ -324,3 +324,21 @@ def parse_iso_duration(what):
 def large_round(number, precision):
     # e.g. large_round(11, 5) -> 10
     return round(number / precision) * precision
+
+
+def split_message(message, known=(
+    'audio', 'document', 'video', 'voice', 'sticker', 'video_note'
+)):
+    """
+    Split message into ``(text, media type, file_id)``.
+    """
+    text = message.text or message.caption or ''
+    if message.photo:
+        return text, 'photo', message.photo[-1].file_id
+    else:
+        for what in known:
+            attr = getattr(message, what)
+            if attr:
+                return text, what, attr.file_id
+
+    return text, None, None
