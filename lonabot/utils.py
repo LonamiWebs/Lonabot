@@ -242,7 +242,7 @@ def spell_due(due, utc_delta=None, prefix=True):
     if prefix and utc_delta is not None:
         # Looks like doing .utcfromtimestamp "subtracts" the +N local time…?
         due = datetime.fromtimestamp(due + utc_delta)
-        due = due.strftime('%d/%m/%Y %H:%M:%S')
+        due = due.strftime('%Y-%m-%d %H:%M:%S')
         return f'due at {due}'
 
     return spell_delay(int(due - datetime.utcnow().timestamp()), prefix=prefix)
