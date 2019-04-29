@@ -51,7 +51,7 @@ def private(f):
             await self.sendMessage(chat_id=update.message.chat.id,
                                    text=f'Please [message me in private]'
                                         f'(tg://user?id={self._me.id}) for '
-                                        f'that :)',
+                                        f'that ;)',
                                    parse_mode='markdown')
     return wrapped
 
