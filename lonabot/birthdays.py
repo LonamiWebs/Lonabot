@@ -81,4 +81,4 @@ def build_clear_markup(birthdays):
           'callback_data': f'birthday/clear/{r.id}'}]
 
         for r in birthdays
-    ]}
+    ] + [[{'text': '🚫 Cancel', 'callback_data': 'cancel'}]]}

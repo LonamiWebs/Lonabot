@@ -1,9 +1,10 @@
 import asyncio
+import calendar
 import contextlib
 import functools
 import html
-import random
 import logging
+import random
 import re
 from datetime import datetime, timedelta
 
@@ -390,6 +391,16 @@ Made with love by @Lonami and hosted by Richard ❤️
                     add = add[:39] + '…'
                 text += f'\n({i}) {due}, {add}'
 
+        if update.message.chat.type == 'private':
+            count = self.db.get_birthday_count(chat_id)
+            if count == 0:
+                text += '\n\nYou have not saved any birthdays here yet'
+            else:
+                s = '' if count == 1 else 's'
+                text += f'\n\nYou have {count} birthday{s} saved:'
+                for r in self.db.iter_birthdays(update.message.chat.id):
+                    text += f'\n• {r.person_name} ({r.day} {calendar.month_name[r.month]})'
+
         await self.sendMessage(chat_id=chat_id, text=text, parse_mode='html')
 
     @dumbot.command
@@ -406,7 +417,7 @@ Made with love by @Lonami and hosted by Richard ❤️
             return
 
         which = which[1].lower()
-        if which == 'bday':
+        if which in ('bday', 'birthday'):
             return await self._clear_bday(update)
 
         have = self.db.get_reminder_count(from_id)
@@ -459,6 +470,15 @@ Made with love by @Lonami and hosted by Richard ❤️
             text="Let's add a birthday! First, "
                  "select your friend's birthday month",
             reply_markup=birthdays.MONTH_MARKUP
+        )
+
+    @dumbot.inline_button(r'cancel')
+    async def cancel(self, update, match):
+        message = update.callback_query.message
+        await self.editMessageText(
+            chat_id=message.chat.id,
+            message_id=message.message_id,
+            text='Okay, operation cancelled'
         )
 
     @dumbot.inline_button(r'birthday/add/m(\d+)')
