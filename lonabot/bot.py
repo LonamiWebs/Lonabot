@@ -205,6 +205,10 @@ Everyone is allowed to use {MAX_REMINDERS} reminders max. No more!
 Made with love by @Lonami and hosted by Richard ❤️
 '''.strip(), parse_mode='markdown')
 
+    @dumbot.command
+    async def remind(self, update):
+        await self.remindin(update)
+
     @limited
     @dumbot.command
     async def remindin(self, update, reply_id=None):
