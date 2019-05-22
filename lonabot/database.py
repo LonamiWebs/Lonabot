@@ -9,8 +9,7 @@ Reminder = collections.namedtuple(
     'Reminder', 'id chat_id due text reply_to creator_id file_type file_id')
 
 Birthday = collections.namedtuple(
-    'Birthday', 'id creator_id month day person_id person_name')
-
+    'Birthday', 'id creator_id month day person_id person_name year_reminded remind_stage')
 
 class Database:
     def __init__(self, filename):
