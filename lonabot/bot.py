@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 import dumbot
 import pytz
 
-from . import utils, heap, schedreminder, birthdays
+from . import utils, heap, schedreminder, birthdays, database
 from .constants import MAX_REMINDERS, MAX_BIRTHDAYS, MAX_TZ_STEP
 
 
@@ -119,7 +119,7 @@ FACES = [
 
 
 class Lonabot(dumbot.Bot):
-    def __init__(self, token, db):
+    def __init__(self, token: str, db: database.Database):
         super().__init__(token, timeout=10 * 60)
         self._conversation = {}
         self._sched_reminders = None
@@ -666,24 +666,18 @@ Made with love by @Lonami and hosted by Richard ❤️
 
     @log_exc
     async def _check_bday(self):
-        last_day = None
-        checked = set()
         while self._running:
             day = datetime.utcnow()
-            if last_day != (day.month, day.day):
-                last_day = (day.month, day.day)
-                checked.clear()
-
             for bday in self.db.iter_birthdays(month=day.month, day=day.day):
-                if bday.id not in checked:
-                    await self._remind_bday(bday, True)
-                    checked.add(bday.id)
+                if not self.db.has_birthday_stage(bday.id, day.year, stage=2):
+                    await self._remind_bday(bday, today=True)
+                    self.db.set_birthday_stage(bday.id, day.year, stage=2)
 
             day += timedelta(days=1)
             for bday in self.db.iter_birthdays(month=day.month, day=day.day):
-                if bday.id not in checked:
-                    await self._remind_bday(bday, False)
-                    checked.add(bday.id)
+                if not self.db.has_birthday_stage(bday.id, day.year, stage=1):
+                    await self._remind_bday(bday, today=False)
+                    self.db.set_birthday_stage(bday.id, day.year, stage=1)
 
             await asyncio.sleep(6 * 60 * 60)
 

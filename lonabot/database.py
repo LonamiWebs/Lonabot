@@ -2,7 +2,7 @@ import collections
 import sqlite3
 import threading
 
-DB_VERSION = 5
+DB_VERSION = 6
 
 
 Reminder = collections.namedtuple(
@@ -51,7 +51,9 @@ class Database:
                       'Month INTEGER NOT NULL,'
                       'Day INTEGER NOT NULL,'
                       'PersonID INTEGER,'
-                      'PersonName TEXT)')
+                      'PersonName TEXT,'
+                      'YearReminded INTEGER,'  # last year we reminded this (to not remind something twice)
+                      'RemindStage INTEGER)')  # what did we remind on this year? (pre-day, or current day)
 
             self._save()
         c.close()
@@ -108,6 +110,10 @@ class Database:
         if old == 4:
             c.execute('ALTER TABLE Reminders ADD FileType TEXT')
             c.execute('ALTER TABLE Reminders ADD FileID TEXT')
+            old = 5
+        if old == 5:
+            c.execute('ALTER TABLE Birthdays ADD YearReminded INTEGER')
+            c.execute('ALTER TABLE Birthdays ADD RemindStage INTEGER')
 
         c.close()
 
@@ -249,6 +255,25 @@ class Database:
             row = c.fetchone()
 
         c.close()
+
+    def set_birthday_stage(self, birthday_id, year, stage):
+        c = self._cursor()
+        c.execute('UPDATE Birthdays '
+                  'SET YearReminded = ?, RemindStage = ? '
+                  'WHERE ID = ?',
+                  (year, stage, birthday_id))
+        c.close()
+        return stage
+
+    def has_birthday_stage(self, birthday_id, year, stage):
+        c = self._cursor()
+        c.execute('SELECT * FROM Birthdays WHERE '
+                  'ID = ? AND YearReminded = ? AND RemindStage = ?',
+                  (birthday_id, year, stage))
+
+        has = c.fetchone() is not None
+        c.close()
+        return has
 
     def stats(self):
         c = self._cursor()
