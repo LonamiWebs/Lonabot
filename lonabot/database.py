@@ -250,6 +250,16 @@ class Database:
 
         c.close()
 
+    def stats(self):
+        c = self._cursor()
+        c.execute('SELECT COUNT(DISTINCT CreatorID) FROM Reminders')
+        people_count = c.fetchone()[0]
+        c.execute('SELECT COUNT(*) FROM Reminders')
+        reminder_count = c.fetchone()[0]
+        c.close()
+
+        return people_count, reminder_count
+
     def delete_birthday(self, birthday_id):
         c = self._cursor()
         c.execute('DELETE FROM Birthdays WHERE ID = ?', (birthday_id,))

@@ -519,6 +519,21 @@ Made with love by @Lonami and hosted by Richard ❤️
                  'you about them with a nice click-able mention ^^'
         )
 
+    @dumbot.command
+    async def stats(self, update):
+        people_count, reminder_count = self.db.stats()
+        if reminder_count == 0:
+            text = 'I am currently procrastinating :)'
+        elif reminder_count == 1:
+            text = "I'm only pending of one reminder at the moment"
+        elif reminder_count < 10:
+            text = f"I'm not doing much, just have {reminder_count} reminders"
+        else:
+            noun = 'person' if people_count == 1 else 'people'
+            text = f"I'm pending of {reminder_count} reminders for {people_count} {noun}"
+
+        await self.sendMessage(chat_id=update.message.chat.id, text=text)
+
     async def _add_bday(self, update, data):
         def get_info():
             fwd = update.message.forward_from
