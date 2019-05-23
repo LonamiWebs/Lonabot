@@ -220,51 +220,54 @@ Made with love by @Lonami and hosted by Richard ❤️
     @limited
     @dumbot.command
     async def remind(self, update):
-        delta = self.db.get_time_delta(update.message.from_.id)
+        msg = update.message
+        chat_id = msg.chat.id
+
+        delta = self.db.get_time_delta(msg.from_.id)
         reply_id = update.message.reply_to_message.message_id or None
 
-        text, file_type, file_id = utils.split_message(update.message)
+        text, file_type, file_id = utils.split_message(msg)
         when = text.split(maxsplit=1)
         if len(when) == 1:
-            msg = await self.sendMessage(
-                chat_id=update.message.chat.id,
+            sent = await self.sendMessage(
+                chat_id=chat_id,
                 text='You forgot to specify when, silly 😉'
                      '(e.g. `/remind 1h30m` or `/remind 17:30`)',
                 parse_mode='markdown'
             )
 
-            if update.message.chat.type != 'private':
+            if msg.chat.type != 'private':
                 await asyncio.sleep(10)
-                await self.deleteMessage(chat_id=update.message.chat.id,
-                                         message_id=msg.message_id)
+                await self.deleteMessage(chat_id=chat_id,
+                                         message_id=sent.message_id)
             return
 
         try:
             due, text = utils.parse_when(when[1], delta)
         except ValueError:
             await self.sendMessage(
-                chat_id=update.message.chat.id,
+                chat_id=chat_id,
                 text="Wait! I don't know your local time. "
                      "Please use /tz to set it first before trying again"
             )
             return
 
         if not due:
-            if update.message.chat.type == 'private':
+            if msg.chat.type == 'private':
                 await self.sendMessage(
-                    chat_id=update.message.chat.id,
+                    chat_id=chat_id,
                     text=f'What time is that?\n\n{TEACH_USAGE}',
                     parse_mode='markdown'
                 )
             else:
                 await self.sendMessage(
-                    chat_id=update.message.chat.id,
+                    chat_id=chat_id,
                     text=f'What time is that? ([Start me in private]'
                          f'(https://t.me/{self._me.username}?start=help) for help)',
                     parse_mode='markdown'
                 )
         elif due > int(datetime.utcnow().timestamp() + MAX_DELAY_TIME):
-            await self.sendSticker(chat_id=update.message.chat.id,
+            await self.sendSticker(chat_id=chat_id,
                                    sticker=CAN_U_DONT)
         else:
             reminder_id = self.db.add_reminder(
@@ -277,7 +280,7 @@ Made with love by @Lonami and hosted by Richard ❤️
             )
             self._sched_reminder(reminder_id, due)
             spelt = utils.spell_due(due, delta)
-            await self.sendMessage(chat_id=update.message.chat.id,
+            await self.sendMessage(chat_id=chat_id,
                                    text=f'Got it! New reminder {spelt} saved')
 
     @dumbot.command
