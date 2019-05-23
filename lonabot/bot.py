@@ -264,7 +264,8 @@ Made with love by @Lonami and hosted by Richard ❤️
                     chat_id=chat_id,
                     text=f'What time is that? ([Start me in private]'
                          f'(https://t.me/{self._me.username}?start=help) for help)',
-                    parse_mode='markdown'
+                    parse_mode='markdown',
+                    disable_web_page_preview=True
                 )
         elif due > int(datetime.utcnow().timestamp() + MAX_DELAY_TIME):
             await self.sendSticker(chat_id=chat_id,
