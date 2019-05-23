@@ -15,7 +15,6 @@ _UNITS = {
 # Reuse floating number regex to reduce verbosity
 _F = r'(\d+(?:\.\d+)?)'
 
-_DELAY_PARSE = re.compile(fr'{_F}:{_F}(?::{_F})?')
 _UNIT_DELAY_PARSE = re.compile(
     fr'\s*{_F}\s*(?:'
     r'(y(?:ea)?r?'
@@ -30,42 +29,37 @@ _UNIT_DELAY_PARSE = re.compile(
 
 _DUE_DATE_DMY = re.compile(r'(\d{1,2})[/-](\d{1,2})(?:[/-](\d{4}))?')
 _DUE_DATE_YMD = re.compile(r'(\d{4})[/-](\d{1,2})(?:[/-](\d{1,2}))?')
-_DUE_TIME = re.compile(fr'{_F}(?::{_F})?(?::{_F})?')
+_DUE_TIME = re.compile(fr'{_F}:{_F}(?::{_F})?')
 
 
-def _parse_delay_iso(when):
-    try:
-        when, text = re.match(r'(\S+)(.*)', when).groups()
-    except AttributeError:
-        return 0, when
+def parse_when(when, delta):
+    # Returns `due` for either `delay` or `due`.
+    due, text = parse_due(when, delta)
+    if due:
+        return due, text
 
-    delay = parse_iso_duration(when)
-    if delay is not None:
-        return int(delay), text
+    delay, text = parse_delay(when)
+    if delay:
+        due = int(datetime.utcnow().timestamp() + delay)
+        return due, text
+
+    return None, None
 
 
 def parse_delay(when):
-    m = _DELAY_PARSE.match(when)
-    if m:
-        hour = float(m.group(1))
-        mins = float(m.group(2))
-        secs = float(m.group(3) or 0)
-        delay = (hour * 60 + mins) * 60 + secs
+    iso = _parse_delay_iso(when)
+    if iso:
+        return iso
+
+    delay = 0.0
+    while True:
+        m = _UNIT_DELAY_PARSE.match(when)
+        if not m:
+            break
+
+        unit = m.group(2) or 'm'
+        delay += float(m.group(1)) * _UNITS[unit[0].lower()]
         when = when[m.end():]
-    else:
-        iso = _parse_delay_iso(when)
-        if iso:
-            return iso
-
-        delay = 0.0
-        while True:
-            m = _UNIT_DELAY_PARSE.match(when)
-            if not m:
-                break
-
-            unit = m.group(2) or 'm'
-            delay += float(m.group(1)) * _UNITS[unit[0].lower()]
-            when = when[m.end():]
 
     # when has become text by now
     return int(delay), when.lstrip()
@@ -142,9 +136,6 @@ def parse_due(due, delta):
         except ValueError:
             d, t = due, ''
 
-        if not any(x in d for x in 'tTzZ+'):
-            raise ValueError('not bothering to check for ISO compliance')
-
         d = datetime.fromisoformat(d)
 
         # Parsing succeeded, so set the correct text now.
@@ -166,7 +157,7 @@ def parse_due(due, delta):
             return None, due
 
     if delta is None:
-        raise TypeError('delta was None (and due had no TZ info)')
+        raise ValueError('delta was None (and due had no TZ info)')
 
     # Work in local time...
     now = datetime.utcnow() + timedelta(seconds=delta)
@@ -277,6 +268,17 @@ def spell_delay(remaining, prefix=True):
             spelt += 's'
 
     return spelt.lstrip()
+
+
+def _parse_delay_iso(when):
+    try:
+        when, text = re.match(r'(\S+)(.*)', when).groups()
+    except AttributeError:
+        return 0, when
+
+    delay = parse_iso_duration(when)
+    if delay is not None:
+        return int(delay), text
 
 
 def parse_iso_duration(what):

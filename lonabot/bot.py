@@ -68,6 +68,14 @@ def log_exc(f):
     return wrapped
 
 
+TEACH_USAGE = '''
+You can set reminders by using:
+`/remind 1h30m Optional text`
+`/remind 17:05 Optional text`
+`/remind 17/11/2020 20:00 Optional text`
+`/remind 2020-02-02T20:00:00+02:00 Optional text`
+'''.strip()
+
 SAY_WHAT = (
     'Say what?', "Sorry I didn't understand!", 'Uhm?', 'Need anything?',
     'What did you mean?', 'Are you trying to see all I can say?',
@@ -185,11 +193,7 @@ class Lonabot(dumbot.Bot):
             text=f'''
 Hi! I'm {self._me.first_name.title()} and running in "reminder" mode.
 
-You can set reminders by using:
-`/remindin 1h30m Optional text`
-`/remindat 17:05 Optional text`
-`/remindat 17/11/2020 20:00 Optional text`
-`/remindat 2020-02-02T20:00:00+02:00 Optional text`
+{TEACH_USAGE}
 
 Or list those you have by using:
 `/status`
@@ -206,69 +210,28 @@ Made with love by @Lonami and hosted by Richard ❤️
 '''.strip(), parse_mode='markdown')
 
     @dumbot.command
-    async def remind(self, update):
-        await self.remindin(update)
+    async def remindin(self, update):
+        await self.remind(update)
+
+    @dumbot.command
+    async def remindat(self, update):
+        await self.remind(update)
 
     @limited
     @dumbot.command
-    async def remindin(self, update, reply_id=None):
+    async def remind(self, update):
+        delta = self.db.get_time_delta(update.message.from_.id)
+        reply_id = update.message.reply_to_message.message_id or None
+
         text, file_type, file_id = utils.split_message(update.message)
         when = text.split(maxsplit=1)
-        if not reply_id:
-            reply_id = update.message.reply_to_message.message_id or None
-
         if len(when) == 1:
-            msg = await self.sendMessage(chat_id=update.message.chat.id,
-                                         text='You forgot to specify when, '
-                                              'silly 😉 (e.g. /remindin 1h30m)')
-
-            if update.message.chat.type != 'private':
-                await asyncio.sleep(10)
-                await self.deleteMessage(chat_id=update.message.chat.id,
-                                         message_id=msg.message_id)
-
-            return
-
-        delay, text = utils.parse_delay(when[1])
-        if not delay:
-            await self.sendMessage(chat_id=update.message.chat.id,
-                                   text='What time is that?')
-        elif delay > MAX_DELAY_TIME:
-            await self.sendSticker(chat_id=update.message.chat.id,
-                                   sticker=CAN_U_DONT)
-        else:
-            due = int(datetime.utcnow().timestamp() + delay)
-            reminder_id = self.db.add_reminder(
-                update=update,
-                due=due,
-                text=text,
-                file_type=file_type,
-                file_id=file_id,
-                reply_id=reply_id
+            msg = await self.sendMessage(
+                chat_id=update.message.chat.id,
+                text='You forgot to specify when, silly 😉'
+                     '(e.g. `/remind 1h30m` or `/remind 17:30`)',
+                parse_mode='markdown'
             )
-            self._sched_reminder(reminder_id, due)
-            spelt = utils.spell_delay(delay, prefix=False)
-            if delay > LONG_DELAY_TIME:
-                text = f'I cannot guarantee I will live '\
-                       f'for {spelt} but I will try my best!'
-            else:
-                text = f'Got it! Will remind in {spelt}'
-
-            await self.sendMessage(chat_id=update.message.chat.id, text=text)
-
-    @limited
-    @dumbot.command
-    async def remindat(self, update, reply_id=None):
-        delta = self.db.get_time_delta(update.message.from_.id)
-        if not reply_id:
-            reply_id = update.message.reply_to_message.message_id or None
-
-        text, file_type, file_id = utils.split_message(update.message)
-        due = text.split(maxsplit=1)
-        if len(due) == 1:
-            msg = await self.sendMessage(chat_id=update.message.chat.id,
-                                         text='You forgot to specify when, '
-                                              'silly 😉 (e.g. /remindat 17:30)')
 
             if update.message.chat.type != 'private':
                 await asyncio.sleep(10)
@@ -277,28 +240,29 @@ Made with love by @Lonami and hosted by Richard ❤️
             return
 
         try:
-            due, text = utils.parse_due(due[1], delta)
-        except TypeError:
+            due, text = utils.parse_when(when[1], delta)
+        except ValueError:
             await self.sendMessage(
                 chat_id=update.message.chat.id,
                 text="Wait! I don't know your local time. "
                      "Please use /tz to set it first before trying again"
             )
             return
-        except ValueError:
-            await self.sendMessage(
-                chat_id=update.message.chat.id,
-                text='You passed a wrong date. It must '
-                     'look like this:\n`DD/MM/YYYY hh:mm:ss`',
-                parse_mode='markdown'
-            )
-            return
 
         if not due:
-            await self.sendMessage(chat_id=update.message.chat.id,
-                                   text='What time is that? (The right '
-                                        'format is `DD/MM/YYYY hh:mm:ss`)',
-                                   parse_mode='markdown')
+            if update.message.chat.type == 'private':
+                await self.sendMessage(
+                    chat_id=update.message.chat.id,
+                    text=f'What time is that?\n\n{TEACH_USAGE}',
+                    parse_mode='markdown'
+                )
+            else:
+                await self.sendMessage(
+                    chat_id=update.message.chat.id,
+                    text=f'What time is that? ([Start me in private]'
+                         f'(https://t.me/{self._me.username}?start=help) for help)',
+                    parse_mode='markdown'
+                )
         elif due > int(datetime.utcnow().timestamp() + MAX_DELAY_TIME):
             await self.sendSticker(chat_id=update.message.chat.id,
                                    sticker=CAN_U_DONT)
