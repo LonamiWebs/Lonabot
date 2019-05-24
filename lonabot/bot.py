@@ -163,10 +163,9 @@ class Lonabot(dumbot.Bot):
             await self._check_bday_task
 
     async def on_update(self, update):
-        conv, data = self._conversation.pop(
-            update.message.chat.id, (None, None))
-
-        text = update.message.text or update.message.caption
+        msg = update.message
+        conv, data = self._conversation.pop(msg.chat.id, (None, None))
+        text = msg.text or msg.caption
         if not text:
             return
 
@@ -174,12 +173,12 @@ class Lonabot(dumbot.Bot):
             await self._add_bday(update, data)
         elif self._thanks(text):
             await self.sendMessage(
-                chat_id=update.message.chat.id,
-                text=f"You're welcome {update.message.from_.first_name} "
+                chat_id=msg.chat.id,
+                text=f"You're welcome {msg.from_.first_name} "
                      f"{random.choice(FACES)}"
             )
-        elif update.message.chat.type == 'private':
-            await self.sendMessage(chat_id=update.message.from_.id,
+        elif msg.chat.type == 'private' and not msg.forward_date:
+            await self.sendMessage(chat_id=msg.from_.id,
                                    text=random.choice(SAY_WHAT))
 
     @dumbot.command
