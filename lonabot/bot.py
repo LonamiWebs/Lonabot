@@ -6,7 +6,7 @@ import html
 import logging
 import random
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import dumbot
 import pytz
@@ -241,8 +241,9 @@ Made with love by @Lonami and hosted by Richard ❤️
                                          message_id=sent.message_id)
             return
 
+        utc_now = datetime.now(timezone.utc)
         try:
-            due, text = utils.parse_when(when[1], delta)
+            due, text = utils.parse_when(when[1], delta, utc_now)
         except ValueError:
             await self.sendMessage(
                 chat_id=chat_id,
@@ -279,7 +280,7 @@ Made with love by @Lonami and hosted by Richard ❤️
                 reply_id=reply_id
             )
             self._sched_reminder(reminder_id, due)
-            spelt = utils.spell_due(due, delta)
+            spelt = utils.spell_due(due, utc_now, delta)
             await self.sendMessage(chat_id=chat_id,
                                    text=f'Got it! New reminder {spelt} saved')
 
@@ -339,6 +340,7 @@ Made with love by @Lonami and hosted by Richard ❤️
     async def status(self, update):
         chat_id = update.message.chat.id
         from_id = update.message.from_.id
+        utc_now = datetime.now(timezone.utc)
 
         reminders = list(self.db.iter_reminders(chat_id, from_id))
         delta = self.db.get_time_delta(from_id)
@@ -346,7 +348,7 @@ Made with love by @Lonami and hosted by Richard ❤️
             text = "You don't have any reminder in this chat yet"
         elif len(reminders) == 1:
             reminder = reminders[0]
-            due = utils.spell_due(reminder.due, delta)
+            due = utils.spell_due(reminder.due, utc_now, delta)
             if reminder.text:
                 text = f'You have one reminder {due} here for "{reminder.text}"'
             else:
@@ -356,7 +358,7 @@ Made with love by @Lonami and hosted by Richard ❤️
                    f'reminders in this chat:'
 
             for i, reminder in enumerate(reminders, start=1):
-                due = utils.spell_due(reminder.due, delta)
+                due = utils.spell_due(reminder.due, utc_now, delta)
                 add = reminder.text or 'no text'
                 if len(add) > 40:
                     add = add[:39] + '…'

@@ -32,15 +32,15 @@ _DUE_DATE_YMD = re.compile(r'(\d{4})[/-](\d{1,2})(?:[/-](\d{1,2}))?')
 _DUE_TIME = re.compile(fr'{_F}:{_F}(?::{_F})?')
 
 
-def parse_when(when, delta):
+def parse_when(when, delta, utc_now):
     # Returns `due` for either `delay` or `due`.
-    due, text = parse_due(when, delta)
+    due, text = parse_due(when, delta, utc_now)
     if due:
         return due, text
 
     delay, text = parse_delay(when)
     if delay:
-        due = int(datetime.utcnow().timestamp() + delay)
+        due = int(utc_now.timestamp() + delay)
         return due, text
 
     return None, None
@@ -129,7 +129,7 @@ def _parse_date_parts(due):
     return empty, empty, due
 
 
-def parse_due(due, delta):
+def parse_due(due, delta, utc_now):
     try:
         try:
             d, t = due.split(maxsplit=1)
@@ -145,8 +145,7 @@ def parse_due(due, delta):
             d.day, d.month, d.year, d.hour, d.minute, d.second)
 
         if d.tzinfo:
-            delta = d.tzinfo.utcoffset(
-                datetime.now(timezone.utc)).total_seconds()
+            delta = d.tzinfo.utcoffset(utc_now).total_seconds()
 
     except (ValueError, AttributeError):
         date, time, text = _parse_date_parts(due)
@@ -160,7 +159,7 @@ def parse_due(due, delta):
         raise ValueError('delta was None (and due had no TZ info)')
 
     # Work in local time...
-    now = datetime.utcnow() + timedelta(seconds=delta)
+    now = utc_now + timedelta(seconds=delta)
     due = datetime(
         year or now.year, month or now.month, day or now.day,
         hour, mins, sec, 0, now.tzinfo
@@ -229,14 +228,14 @@ def spell_number(n, allow_and=True):
     return spelt.lstrip()
 
 
-def spell_due(due, utc_delta=None, prefix=True):
+def spell_due(due, utc_now, utc_delta=None, prefix=True):
     if prefix and utc_delta is not None:
         # Looks like doing .utcfromtimestamp "subtracts" the +N local time…?
         due = datetime.fromtimestamp(due + utc_delta)
         due = due.strftime('%Y-%m-%d %H:%M:%S')
         return f'due at {due}'
 
-    return spell_delay(int(due - datetime.utcnow().timestamp()), prefix=prefix)
+    return spell_delay(round(due - utc_now.timestamp()), prefix=prefix)
 
 
 def spell_delay(remaining, prefix=True):
