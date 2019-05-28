@@ -59,7 +59,13 @@ def parse_delay(when):
         if not m:
             break
 
-        unit = m.group(2) or 'm'
+        # TODO Find a better way to support 'mo' and 'm'
+        unit = (m.group(2) or 'm').lower()
+        if unit.startswith('mo'):
+            unit = unit[:2]
+        else:
+            unit = unit[0]
+
         delay += float(m.group(1)) * _UNITS[unit[0].lower()]
         when = when[m.end():]
 
