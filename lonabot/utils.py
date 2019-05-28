@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 
 _UNITS = {
     'y': 31536000.0,
+    'mo': 2592000.0,
     'w': 604800.0,
     'd': 86400.0,
     'h': 3600.0,
@@ -18,6 +19,7 @@ _F = r'(\d+(?:\.\d+)?)'
 _UNIT_DELAY_PARSE = re.compile(
     fr'\s*{_F}\s*(?:'
     r'(y(?:ea)?r?'
+    r'|mo(?:nth)?'
     r'|w(?:ee)?k?'
     r'|d(?:ay)?'
     r'|h(?:ou)?r?'
