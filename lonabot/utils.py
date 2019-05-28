@@ -17,15 +17,15 @@ _UNITS = {
 _F = r'(\d+(?:\.\d+)?)'
 
 _UNIT_DELAY_PARSE = re.compile(
-    fr'\s*{_F}\s*(?:'
-    r'(y(?:ea)?r?'
-    r'|mo(?:nth)?'
-    r'|w(?:ee)?k?'
-    r'|d(?:ay)?'
-    r'|h(?:ou)?r?'
-    r'|m(?:in(?:ute)?)?'
-    r'|s(?:ec(?:ond)?)?'
-    r')s?)?(?=\b|\d)',
+    fr'\s*{_F}\s*'
+    r'(y(?:ea)?r?s?'
+    r'|mo(?:nth)?s?'
+    r'|w(?:eek)?s?'
+    r'|d(?:ay)?s?'
+    r'|h(?:ou)?r?s?'
+    r'|m(?:in(?:ute)?)?s?'
+    r'|s(?:ec(?:ond)?)?s?)?'
+    r'(?=\b|\d)',
     re.IGNORECASE
 )
 
@@ -66,7 +66,7 @@ def parse_delay(when):
         else:
             unit = unit[0]
 
-        delay += float(m.group(1)) * _UNITS[unit[0].lower()]
+        delay += float(m.group(1)) * _UNITS[unit.lower()]
         when = when[m.end():]
 
     # when has become text by now
