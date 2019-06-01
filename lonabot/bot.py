@@ -194,10 +194,15 @@ Hi! I'm {self._me.first_name.title()} and running in "reminder" mode.
 
 {TEACH_USAGE}
 
-Or list those you have by using:
+You can list previous reminders with:
 `/status`
 
-And change your timezone for use in `/remindat` with:
+You can clear previous reminders with:
+`/clear next` for the closest one
+`/clear all` for all in the chat
+`/clear 2` for the 2 in `/status`
+
+You can change your timezone with:
 `/tz 10:00`
 `/tz Europe/Madrid`
 
