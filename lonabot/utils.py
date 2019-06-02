@@ -3,6 +3,11 @@ import itertools
 import re
 from datetime import datetime, timedelta, timezone
 
+
+class NoDeltaError(ValueError):
+    pass
+
+
 _UNITS = {
     'y': 31536000.0,
     'mo': 2592000.0,
@@ -164,7 +169,7 @@ def parse_due(due, delta, utc_now):
             return None, due
 
     if delta is None:
-        raise ValueError('delta was None (and due had no TZ info)')
+        raise NoDeltaError('delta was None (and due had no TZ info)')
 
     # Work in local time...
     now = utc_now + timedelta(seconds=delta)

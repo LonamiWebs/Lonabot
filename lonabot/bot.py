@@ -249,11 +249,16 @@ Made with love by @Lonami and hosted by Richard ❤️
         utc_now = datetime.now(timezone.utc)
         try:
             due, text = utils.parse_when(when[1], delta, utc_now)
-        except ValueError:
+        except utils.NoDeltaError:
             await self.sendMessage(
                 chat_id=chat_id,
                 text="Wait! I don't know your local time. "
                      "Please use /tz to set it first before trying again"
+            )
+        except ValueError as e:
+            await self.sendMessage(
+                chat_id=chat_id,
+                text=f'Uhm… My snake says {str(e) or "uh… something"}'
             )
             return
 
