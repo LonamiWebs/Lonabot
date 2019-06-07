@@ -149,6 +149,9 @@ def parse_due(due, delta, utc_now):
         except ValueError:
             d, t = due, ''
 
+        if 'T' not in d:
+            raise ValueError('Not parsing ISO date without T')
+
         d = datetime.fromisoformat(d)
 
         # Parsing succeeded, so set the correct text now.
