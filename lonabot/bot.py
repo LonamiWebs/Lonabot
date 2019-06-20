@@ -255,6 +255,7 @@ Made with love by @Lonami and hosted by Richard ❤️
                 text="Wait! I don't know your local time. "
                      "Please use /tz to set it first before trying again"
             )
+            return
         except ValueError as e:
             await self.sendMessage(
                 chat_id=chat_id,
