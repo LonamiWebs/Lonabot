@@ -235,7 +235,7 @@ Made with love by @Lonami and hosted by Richard ❤️
         if len(when) == 1:
             sent = await self.sendMessage(
                 chat_id=chat_id,
-                text='You forgot to specify when, silly 😉'
+                text='You forgot to specify when, silly 😉 '
                      '(e.g. `/remind 1h30m` or `/remind 17:30`)',
                 parse_mode='markdown'
             )
