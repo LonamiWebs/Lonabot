@@ -251,7 +251,7 @@ def spell_due(due, utc_now, utc_delta=None, prefix=True):
         due = due.strftime('%Y-%m-%d %H:%M:%S')
         return f'due at {due}'
 
-    return spell_delay(round(due - utc_now.timestamp()), prefix=prefix)
+    return spell_delay(int(due - utc_now.timestamp()), prefix=prefix)
 
 
 def spell_delay(remaining, prefix=True):
