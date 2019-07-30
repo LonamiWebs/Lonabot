@@ -34,8 +34,7 @@ _UNIT_DELAY_PARSE = re.compile(
     re.IGNORECASE
 )
 
-_DUE_DATE_DMY = re.compile(r'(\d{1,2})[/-](\d{1,2})(?:[/-](\d{4}))?')
-_DUE_DATE_YMD = re.compile(r'(\d{4})[/-](\d{1,2})(?:[/-](\d{1,2}))?')
+_DUE_DATE_YMD = re.compile(r'(?:(\d{4})[/-])?(\d{1,2})[/-](\d{1,2})')
 _DUE_TIME = re.compile(fr'{_F}:{_F}(?::{_F})?')
 
 
@@ -82,10 +81,6 @@ def _parse_due_date(part):
     """
     Parse a part of text as a date, in either DD/MM/YYYY or YYYY/MM/DD format.
     """
-    m = _DUE_DATE_DMY.match(part)
-    if m:
-        return reversed(m.groups())
-
     m = _DUE_DATE_YMD.match(part)
     if m:
         return m.groups()
@@ -182,12 +177,16 @@ def parse_due(due, delta, utc_now):
     )
 
     if due < now:
-        # Reasoning: if the user passed a day but the due time
-        # is below the current time, we assume they meant for
-        # the next month. If no month was specified, then only
-        # hours were given, so it might be for the next day.
-        days_in_month = calendar.monthrange(due.year, due.month)[1]
-        due += timedelta(days=days_in_month if day else 1)
+        # If the date is specified, we will always have a month.
+        # If the month is the past (and no year was specified),
+        # then the only possible date is next year.
+        if day and month and not year:
+            if not year:
+                due += timedelta(days=365)
+                if calendar.isleap(due.year) and due > datetime(now.year + 1, 2, 28, 23, 59, 59, tzinfo=timezone.utc):
+                    due += timedelta(days=1)
+        elif not any((day, month, year)):
+            due += timedelta(days=1)
 
     # ...but return UTC time
     return int(due.timestamp() - delta), text
