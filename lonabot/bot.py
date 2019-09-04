@@ -62,8 +62,11 @@ def log_exc(f):
     async def wrapped(*args, **kwargs):
         try:
             return await f(*args, **kwargs)
-        except Exception:
-            logging.exception('Unhandled exception in %s', f)
+        except Exception as e:
+            if isinstance(e, asyncio.CancelledError):
+                raise  # let it propagate
+            else:
+                logging.exception('Unhandled exception in %s', f)
 
     return wrapped
 
