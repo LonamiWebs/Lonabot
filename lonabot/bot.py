@@ -224,6 +224,14 @@ Made with love by @Lonami and hosted by Richard ❤️
     async def remindat(self, update):
         await self.remind(update)
 
+    @dumbot.command
+    async def remindme(self, update):
+        await self.remind(update)
+
+    @dumbot.command
+    async def reminder(self, update):
+        await self.remind(update)
+
     @limited
     @dumbot.command
     async def remind(self, update):
