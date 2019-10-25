@@ -104,6 +104,8 @@ GOOD_BYE = [
     'Farvel',
     'Farväl',
     'Hejdå',
+    'På återseende',
+    'Auf wiedersehen',
     'Tot ziens',
     'Näkemiin',
     'Au revoir',
