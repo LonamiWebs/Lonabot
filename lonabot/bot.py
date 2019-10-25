@@ -259,11 +259,8 @@ Made with love by @Lonami and hosted by Richard ❤️
         msg = update.message
         chat_id = msg.chat.id
 
-        zone = self.db.get_time_zone(msg.from_.id)
-
-        if zone is None:
-            delta = self.db.get_time_delta(msg.from_.id)
-        else:
+        delta, zone = self.db.get_time_delta(msg.from_.id)
+        if zone is not None:
             delta = self._get_time_zone_delta(zone)
 
         reply_id = update.message.reply_to_message.message_id or None
@@ -382,10 +379,7 @@ Made with love by @Lonami and hosted by Richard ❤️
                 else:
                     delta -= 24 * 60 * 60
 
-        self.db.set_time_delta(update.message.from_.id, delta)
-
-        if zone is not None:
-            self.db.set_time_zone(update.message.from_.id, zone)
+        self.db.set_time_delta(update.message.from_.id, delta, zone)
 
         await self.sendMessage(chat_id=update.message.chat.id,
                                text=f"Got it! There's a difference of "
@@ -398,11 +392,8 @@ Made with love by @Lonami and hosted by Richard ❤️
         utc_now = datetime.now(timezone.utc)
 
         reminders = list(self.db.iter_reminders(chat_id, from_id))
-        zone = self.db.get_time_zone(from_id)
-        delta = None
 
-        if zone is None:
-            delta = self.db.get_time_delta(from_id)
+        delta, zone = self.db.get_time_delta(from_id)
 
         if len(reminders) == 0:
             text = "You don't have any reminder in this chat yet"
