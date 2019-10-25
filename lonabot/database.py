@@ -2,7 +2,7 @@ import collections
 import sqlite3
 import threading
 
-DB_VERSION = 6
+DB_VERSION = 7
 
 
 Reminder = collections.namedtuple(
@@ -32,7 +32,8 @@ class Database:
 
             c.execute('CREATE TABLE TimeDelta('
                       'UserID INTEGER PRIMARY KEY,'
-                      'Delta INTEGER NOT NULL)')
+                      'Delta INTEGER NOT NULL,'
+                      'TimeZone TEXT NULL)')
 
             c.execute('CREATE TABLE Reminders('
                       'ID INTEGER PRIMARY KEY AUTOINCREMENT,'
@@ -113,6 +114,9 @@ class Database:
         if old == 5:
             c.execute('ALTER TABLE Birthdays ADD YearReminded INTEGER')
             c.execute('ALTER TABLE Birthdays ADD RemindStage INTEGER')
+            old = 6
+        if old == 6:
+            c.execute('ALTER TABLE TimeDelta ADD TimeZone TEXT NULL')
 
         c.close()
 
@@ -179,20 +183,20 @@ class Database:
 
         c.close()
 
-    def set_time_delta(self, user_id, delta):
+    def set_time_delta(self, user_id, delta, zone=None):
         c = self._cursor()
         c.execute(
             'INSERT OR REPLACE INTO TimeDelta '
-            '(UserID, Delta) VALUES (?, ?)',
-            (user_id, delta)
+            '(UserID, Delta, TimeZone) VALUES (?, ?, ?)',
+            (user_id, delta, zone)
         )
         c.close()
         self._save()
 
     def get_time_delta(self, user_id):
         c = self._cursor()
-        c.execute('SELECT Delta FROM TimeDelta WHERE UserID = ?', (user_id,))
-        return (c.fetchone() or (None,))[0]
+        c.execute('SELECT Delta, TimeZone FROM TimeDelta WHERE UserID = ?', (user_id,))
+        return c.fetchone() or (None, None)
 
     def pop_reminder(self, reminder_id):
         c = self._cursor()

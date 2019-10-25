@@ -259,7 +259,10 @@ Made with love by @Lonami and hosted by Richard ❤️
         msg = update.message
         chat_id = msg.chat.id
 
-        delta = self.db.get_time_delta(msg.from_.id)
+        delta, zone = self.db.get_time_delta(msg.from_.id)
+        if zone is not None:
+            delta = self._get_time_zone_delta(zone)
+
         reply_id = update.message.reply_to_message.message_id or None
 
         text, file_type, file_id = utils.split_message(msg)
@@ -310,7 +313,7 @@ Made with love by @Lonami and hosted by Richard ❤️
                     parse_mode='markdown',
                     disable_web_page_preview=True
                 )
-        elif due > int(datetime.utcnow().timestamp() + MAX_DELAY_TIME):
+        elif due > int(datetime.now(tz=pytz.UTC).timestamp() + MAX_DELAY_TIME):
             await self.sendSticker(chat_id=chat_id,
                                    sticker=CAN_U_DONT)
         else:
@@ -323,7 +326,10 @@ Made with love by @Lonami and hosted by Richard ❤️
                 reply_id=reply_id
             )
             self._sched_reminder(reminder_id, due)
-            spelt = utils.spell_due(due, utc_now, delta)
+            if zone is None:
+                spelt = utils.spell_due(due, utc_now, delta)
+            else:
+                spelt = utils.spell_due_zoned(due, utc_now, zone)
             await self.sendMessage(chat_id=chat_id,
                                    text=f'Got it! New reminder {spelt} saved')
 
@@ -340,15 +346,14 @@ Made with love by @Lonami and hosted by Richard ❤️
             return
 
         delta = None
+        zone = None
         m = re.match(r'(\d+):(\d+)', tz[1])
         if m:
             hour, mins = map(int, m.groups())
         else:
             try:
-                # TODO This won't consider daylight saving time BS
-                # TODO Do this delta thing better
-                delta = int(pytz.timezone(tz[1].title()).utcoffset(
-                    datetime.utcnow()).total_seconds())
+                zone = tz[1].title()
+                delta = self._get_time_zone_delta(zone)
 
             except pytz.UnknownTimeZoneError:
                 await self.sendMessage(
@@ -361,7 +366,7 @@ Made with love by @Lonami and hosted by Richard ❤️
                 return
 
         if delta is None:
-            now = datetime.utcnow()
+            now = datetime.now(tz=pytz.UTC)
             now = now.hour * 60 + now.minute
             remote = hour * 60 + mins
 
@@ -374,7 +379,8 @@ Made with love by @Lonami and hosted by Richard ❤️
                 else:
                     delta -= 24 * 60 * 60
 
-        self.db.set_time_delta(update.message.from_.id, delta)
+        self.db.set_time_delta(update.message.from_.id, delta, zone)
+
         await self.sendMessage(chat_id=update.message.chat.id,
                                text=f"Got it! There's a difference of "
                                     f"{delta} seconds between you and I :D")
@@ -386,12 +392,19 @@ Made with love by @Lonami and hosted by Richard ❤️
         utc_now = datetime.now(timezone.utc)
 
         reminders = list(self.db.iter_reminders(chat_id, from_id))
-        delta = self.db.get_time_delta(from_id)
+
+        delta, zone = self.db.get_time_delta(from_id)
+
         if len(reminders) == 0:
             text = "You don't have any reminder in this chat yet"
         elif len(reminders) == 1:
             reminder = reminders[0]
-            due = utils.spell_due(reminder.due, utc_now, delta)
+
+            if zone is None:
+                due = utils.spell_due(reminder.due, utc_now, delta)
+            else:
+                due = utils.spell_due_zoned(reminder.due, utc_now, zone)
+
             if reminder.text:
                 text = f'You have one reminder {due} here for "{reminder.text}"'
             else:
@@ -401,7 +414,11 @@ Made with love by @Lonami and hosted by Richard ❤️
                    f'reminders in this chat:'
 
             for i, reminder in enumerate(reminders, start=1):
-                due = utils.spell_due(reminder.due, utc_now, delta)
+                if zone is None:
+                    due = utils.spell_due(reminder.due, utc_now, delta)
+                else:
+                    due = utils.spell_due_zoned(reminder.due, utc_now, zone)
+
                 add = reminder.text or 'no text'
                 if len(add) > 40:
                     add = add[:39] + '…'
@@ -660,7 +677,8 @@ Made with love by @Lonami and hosted by Richard ❤️
         while self._running:
             while self._sched_reminders:
                 upcoming = self._sched_reminders.peek()
-                delta = upcoming.due - datetime.utcnow().timestamp()
+                actual_utc_now = datetime.now(tz=pytz.UTC).timestamp()
+                delta = upcoming.due - actual_utc_now
                 if delta > 1:
                     break
 
@@ -679,7 +697,7 @@ Made with love by @Lonami and hosted by Richard ❤️
     @log_exc
     async def _check_bday(self):
         while self._running:
-            day = datetime.utcnow()
+            day = datetime.now(tz=pytz.UTC)
             for bday in self.db.iter_birthdays(month=day.month, day=day.day):
                 if not self.db.has_birthday_stage(bday.id, day.year, stage=2):
                     await self._remind_bday(bday, today=True)
@@ -717,3 +735,7 @@ Made with love by @Lonami and hosted by Richard ❤️
             parse_mode='html'
         )
         await asyncio.sleep(1)
+
+    def _get_time_zone_delta(self, zone):
+        return int(pytz.timezone(zone).utcoffset(
+            datetime.utcnow()).total_seconds())

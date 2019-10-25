@@ -3,6 +3,8 @@ import itertools
 import re
 from datetime import datetime, timedelta, timezone
 
+import pytz
+
 
 class NoDeltaError(ValueError):
     pass
@@ -243,10 +245,21 @@ def spell_number(n, allow_and=True):
     return spelt.lstrip()
 
 
+def spell_due_zoned(due, utc_now, zone=None, prefix=True):
+    if prefix and zone is not None:
+        due_utc = datetime.fromtimestamp(due, tz=pytz.UTC)
+        due = utc_to_local(due_utc, zone)
+        due = due.strftime('%Y-%m-%d %H:%M:%S')
+
+        return f'due at {due}'
+
+    return spell_delay(int(due - utc_now.timestamp()), prefix=prefix)
+
+
 def spell_due(due, utc_now, utc_delta=None, prefix=True):
     if prefix and utc_delta is not None:
         # Looks like doing .utcfromtimestamp "subtracts" the +N local time…?
-        due = datetime.fromtimestamp(due + utc_delta)
+        due = datetime.fromtimestamp(due + utc_delta, tz=pytz.UTC)
         due = due.strftime('%Y-%m-%d %H:%M:%S')
         return f'due at {due}'
 
@@ -358,3 +371,9 @@ def split_message(message, known=(
                 return text, what, attr.file_id
 
     return text, None, None
+
+def utc_to_local(utc, zone):
+    tz = pytz.timezone(zone)
+
+    # CAUTION: `astimezone` ONLY works if `utc` is NOT a naive datetime!
+    return utc.astimezone(tz)
