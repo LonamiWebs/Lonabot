@@ -247,7 +247,7 @@ def spell_number(n, allow_and=True):
 
 def spell_due_zoned(due, utc_now, zone=None, prefix=True):
     if prefix and zone is not None:
-        due_utc = datetime.fromtimestamp(due)
+        due_utc = datetime.fromtimestamp(due, tz=pytz.UTC)
         due = utc_to_local(due_utc, zone)
         due = due.strftime('%Y-%m-%d %H:%M:%S')
 
@@ -259,7 +259,7 @@ def spell_due_zoned(due, utc_now, zone=None, prefix=True):
 def spell_due(due, utc_now, utc_delta=None, prefix=True):
     if prefix and utc_delta is not None:
         # Looks like doing .utcfromtimestamp "subtracts" the +N local time…?
-        due = datetime.fromtimestamp(due + utc_delta)
+        due = datetime.fromtimestamp(due + utc_delta, tz=pytz.UTC)
         due = due.strftime('%Y-%m-%d %H:%M:%S')
         return f'due at {due}'
 
@@ -374,4 +374,6 @@ def split_message(message, known=(
 
 def utc_to_local(utc, zone):
     tz = pytz.timezone(zone)
-    return tz.fromutc(utc)
+
+    # CAUTION: `astimezone` ONLY works if `utc` is NOT a naive datetime!
+    return utc.astimezone(tz)

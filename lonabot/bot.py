@@ -316,7 +316,7 @@ Made with love by @Lonami and hosted by Richard ❤️
                     parse_mode='markdown',
                     disable_web_page_preview=True
                 )
-        elif due > int(datetime.utcnow().timestamp() + MAX_DELAY_TIME):
+        elif due > int(datetime.now(tz=pytz.UTC).timestamp() + MAX_DELAY_TIME):
             await self.sendSticker(chat_id=chat_id,
                                    sticker=CAN_U_DONT)
         else:
@@ -371,7 +371,7 @@ Made with love by @Lonami and hosted by Richard ❤️
                 return
 
         if delta is None:
-            now = datetime.utcnow()
+            now = datetime.now(tz=pytz.UTC)
             now = now.hour * 60 + now.minute
             remote = hour * 60 + mins
 
@@ -688,7 +688,8 @@ Made with love by @Lonami and hosted by Richard ❤️
         while self._running:
             while self._sched_reminders:
                 upcoming = self._sched_reminders.peek()
-                delta = upcoming.due - datetime.utcnow().timestamp()
+                actual_utc_now = datetime.now(tz=pytz.UTC).timestamp()
+                delta = upcoming.due - actual_utc_now
                 if delta > 1:
                     break
 
@@ -707,7 +708,7 @@ Made with love by @Lonami and hosted by Richard ❤️
     @log_exc
     async def _check_bday(self):
         while self._running:
-            day = datetime.utcnow()
+            day = datetime.now(tz=pytz.UTC)
             for bday in self.db.iter_birthdays(month=day.month, day=day.day):
                 if not self.db.has_birthday_stage(bday.id, day.year, stage=2):
                     await self._remind_bday(bday, today=True)
