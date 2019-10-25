@@ -2,7 +2,7 @@ import collections
 import sqlite3
 import threading
 
-DB_VERSION = 6
+DB_VERSION = 7
 
 
 Reminder = collections.namedtuple(
@@ -33,6 +33,10 @@ class Database:
             c.execute('CREATE TABLE TimeDelta('
                       'UserID INTEGER PRIMARY KEY,'
                       'Delta INTEGER NOT NULL)')
+
+            c.execute('CREATE TABLE TimeZones('
+                      'UserID INTEGER PRIMARY KEY,'
+                      'Zone TEXT NOT NULL)')
 
             c.execute('CREATE TABLE Reminders('
                       'ID INTEGER PRIMARY KEY AUTOINCREMENT,'
@@ -113,6 +117,11 @@ class Database:
         if old == 5:
             c.execute('ALTER TABLE Birthdays ADD YearReminded INTEGER')
             c.execute('ALTER TABLE Birthdays ADD RemindStage INTEGER')
+            old = 6
+        if old == 6:
+            c.execute('CREATE TABLE TimeZones('
+                      'UserID INTEGER PRIMARY KEY,'
+                      'Zone TEXT NOT NULL)')
 
         c.close()
 
@@ -189,9 +198,24 @@ class Database:
         c.close()
         self._save()
 
+    def set_time_zone(self, user_id, zone):
+        c = self._cursor()
+        c.execute(
+            'INSERT OR REPLACE INTO TimeZones '
+            '(UserID, Zone) VALUES(?, ?)',
+            (user_id, zone)
+        )
+        c.close()
+        self._save()
+
     def get_time_delta(self, user_id):
         c = self._cursor()
         c.execute('SELECT Delta FROM TimeDelta WHERE UserID = ?', (user_id,))
+        return (c.fetchone() or (None,))[0]
+
+    def get_time_zone(self, user_id):
+        c = self._cursor()
+        c.execute('SELECT Zone FROM TimeZones WHERE UserID = ?', (user_id,))
         return (c.fetchone() or (None,))[0]
 
     def pop_reminder(self, reminder_id):

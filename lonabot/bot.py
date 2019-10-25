@@ -259,7 +259,13 @@ Made with love by @Lonami and hosted by Richard ❤️
         msg = update.message
         chat_id = msg.chat.id
 
-        delta = self.db.get_time_delta(msg.from_.id)
+        zone = self.db.get_time_zone(msg.from_.id)
+
+        if zone is None:
+            delta = self.db.get_time_delta(msg.from_.id)
+        else:
+            delta = self._get_time_zone_delta(zone)
+
         reply_id = update.message.reply_to_message.message_id or None
 
         text, file_type, file_id = utils.split_message(msg)
@@ -323,7 +329,10 @@ Made with love by @Lonami and hosted by Richard ❤️
                 reply_id=reply_id
             )
             self._sched_reminder(reminder_id, due)
-            spelt = utils.spell_due(due, utc_now, delta)
+            if zone is None:
+                spelt = utils.spell_due(due, utc_now, delta)
+            else:
+                spelt = utils.spell_due_zoned(due, utc_now, zone)
             await self.sendMessage(chat_id=chat_id,
                                    text=f'Got it! New reminder {spelt} saved')
 
@@ -340,6 +349,7 @@ Made with love by @Lonami and hosted by Richard ❤️
             return
 
         delta = None
+        zone = None
         m = re.match(r'(\d+):(\d+)', tz[1])
         if m:
             hour, mins = map(int, m.groups())
@@ -347,8 +357,8 @@ Made with love by @Lonami and hosted by Richard ❤️
             try:
                 # TODO This won't consider daylight saving time BS
                 # TODO Do this delta thing better
-                delta = int(pytz.timezone(tz[1].title()).utcoffset(
-                    datetime.utcnow()).total_seconds())
+                zone = tz[1].title()
+                delta = self._get_time_zone_delta(zone)
 
             except pytz.UnknownTimeZoneError:
                 await self.sendMessage(
@@ -375,6 +385,10 @@ Made with love by @Lonami and hosted by Richard ❤️
                     delta -= 24 * 60 * 60
 
         self.db.set_time_delta(update.message.from_.id, delta)
+
+        if zone is not None:
+            self.db.set_time_zone(update.message.from_.id, zone)
+
         await self.sendMessage(chat_id=update.message.chat.id,
                                text=f"Got it! There's a difference of "
                                     f"{delta} seconds between you and I :D")
@@ -386,12 +400,22 @@ Made with love by @Lonami and hosted by Richard ❤️
         utc_now = datetime.now(timezone.utc)
 
         reminders = list(self.db.iter_reminders(chat_id, from_id))
-        delta = self.db.get_time_delta(from_id)
+        zone = self.db.get_time_zone(from_id)
+        delta = None
+
+        if zone is None:
+            delta = self.db.get_time_delta(from_id)
+
         if len(reminders) == 0:
             text = "You don't have any reminder in this chat yet"
         elif len(reminders) == 1:
             reminder = reminders[0]
-            due = utils.spell_due(reminder.due, utc_now, delta)
+
+            if zone is None:
+                due = utils.spell_due(reminder.due, utc_now, delta)
+            else:
+                due = utils.spell_due_zoned(reminder.due, utc_now, zone)
+
             if reminder.text:
                 text = f'You have one reminder {due} here for "{reminder.text}"'
             else:
@@ -401,7 +425,11 @@ Made with love by @Lonami and hosted by Richard ❤️
                    f'reminders in this chat:'
 
             for i, reminder in enumerate(reminders, start=1):
-                due = utils.spell_due(reminder.due, utc_now, delta)
+                if zone is None:
+                    due = utils.spell_due(reminder.due, utc_now, delta)
+                else:
+                    due = utils.spell_due_zoned(reminder.due, utc_now, zone)
+
                 add = reminder.text or 'no text'
                 if len(add) > 40:
                     add = add[:39] + '…'
@@ -717,3 +745,7 @@ Made with love by @Lonami and hosted by Richard ❤️
             parse_mode='html'
         )
         await asyncio.sleep(1)
+
+    def _get_time_zone_delta(self, zone):
+        return int(pytz.timezone(zone).utcoffset(
+            datetime.utcnow()).total_seconds())
