@@ -119,7 +119,7 @@ GOOD_BYE = [
     'Alweda',
     'Adiós',
     'Hamba kahle',
-    'Sayonara',
+    'Sayōnara',
 ]
 
 FACES = [
