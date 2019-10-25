@@ -355,8 +355,6 @@ Made with love by @Lonami and hosted by Richard ❤️
             hour, mins = map(int, m.groups())
         else:
             try:
-                # TODO This won't consider daylight saving time BS
-                # TODO Do this delta thing better
                 zone = tz[1].title()
                 delta = self._get_time_zone_delta(zone)
 
