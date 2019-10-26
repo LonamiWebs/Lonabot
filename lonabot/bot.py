@@ -259,9 +259,7 @@ Made with love by @Lonami and hosted by Richard ❤️
         msg = update.message
         chat_id = msg.chat.id
 
-        delta, zone = self.db.get_time_delta(msg.from_.id)
-        if zone is not None:
-            delta = self._get_time_zone_delta(zone)
+        time_delta = self.db.get_time_delta(msg.from_.id)
 
         reply_id = update.message.reply_to_message.message_id or None
 
@@ -283,7 +281,7 @@ Made with love by @Lonami and hosted by Richard ❤️
 
         utc_now = datetime.now(timezone.utc)
         try:
-            due, text = utils.parse_when(when[1], delta, utc_now)
+            due, text = utils.parse_when(when[1], time_delta, utc_now)
         except utils.NoDeltaError:
             await self.sendMessage(
                 chat_id=chat_id,
@@ -326,10 +324,7 @@ Made with love by @Lonami and hosted by Richard ❤️
                 reply_id=reply_id
             )
             self._sched_reminder(reminder_id, due)
-            if zone is None:
-                spelt = utils.spell_due(due, utc_now, delta)
-            else:
-                spelt = utils.spell_due_zoned(due, utc_now, zone)
+            spelt = utils.spell_due(due, utc_now, time_delta)
             await self.sendMessage(chat_id=chat_id,
                                    text=f'Got it! New reminder {spelt} saved')
 
@@ -393,17 +388,14 @@ Made with love by @Lonami and hosted by Richard ❤️
 
         reminders = list(self.db.iter_reminders(chat_id, from_id))
 
-        delta, zone = self.db.get_time_delta(from_id)
+        time_delta = self.db.get_time_delta(from_id)
 
         if len(reminders) == 0:
             text = "You don't have any reminder in this chat yet"
         elif len(reminders) == 1:
             reminder = reminders[0]
 
-            if zone is None:
-                due = utils.spell_due(reminder.due, utc_now, delta)
-            else:
-                due = utils.spell_due_zoned(reminder.due, utc_now, zone)
+            due = utils.spell_due(reminder.due, utc_now, time_delta)
 
             if reminder.text:
                 text = f'You have one reminder {due} here for "{reminder.text}"'
@@ -414,10 +406,7 @@ Made with love by @Lonami and hosted by Richard ❤️
                    f'reminders in this chat:'
 
             for i, reminder in enumerate(reminders, start=1):
-                if zone is None:
-                    due = utils.spell_due(reminder.due, utc_now, delta)
-                else:
-                    due = utils.spell_due_zoned(reminder.due, utc_now, zone)
+                due = utils.spell_due(reminder.due, utc_now, time_delta)
 
                 add = reminder.text or 'no text'
                 if len(add) > 40:

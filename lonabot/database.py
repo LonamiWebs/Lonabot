@@ -2,6 +2,10 @@ import collections
 import sqlite3
 import threading
 
+import pytz
+
+from dataclasses import dataclass
+
 DB_VERSION = 7
 
 
@@ -10,6 +14,16 @@ Reminder = collections.namedtuple(
 
 Birthday = collections.namedtuple(
     'Birthday', 'id creator_id month day person_id person_name year_reminded remind_stage')
+
+@dataclass
+class TimeDelta:
+    delta: int
+    time_zone: str
+
+    def pytz(self):
+        if self.time_zone is None:
+            return None
+        return pytz.timezone(self.time_zone)
 
 class Database:
     def __init__(self, filename):
@@ -196,7 +210,8 @@ class Database:
     def get_time_delta(self, user_id):
         c = self._cursor()
         c.execute('SELECT Delta, TimeZone FROM TimeDelta WHERE UserID = ?', (user_id,))
-        return c.fetchone() or (None, None)
+        delta, time_zone = (c.fetchone() or (None, None))
+        return TimeDelta(delta, time_zone) if delta else None
 
     def pop_reminder(self, reminder_id):
         c = self._cursor()
