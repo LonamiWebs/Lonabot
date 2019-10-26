@@ -5,6 +5,8 @@ from datetime import datetime, timedelta, timezone
 
 import pytz
 
+from .database import TimeDelta
+
 
 class NoDeltaError(ValueError):
     pass
@@ -40,9 +42,9 @@ _DUE_DATE_YMD = re.compile(r'(?:(\d{4})[/-])?(\d{1,2})[/-](\d{1,2})')
 _DUE_TIME = re.compile(fr'{_F}:{_F}(?::{_F})?')
 
 
-def parse_when(when, delta, utc_now):
+def parse_when(when, time_delta: TimeDelta, utc_now):
     # Returns `due` for either `delay` or `due`.
-    due, text = parse_due(when, delta, utc_now)
+    due, text = parse_due(when, time_delta, utc_now)
     if due:
         return due, text
 
@@ -139,7 +141,8 @@ def _parse_date_parts(due):
     return empty, empty, due
 
 
-def parse_due(due, delta, utc_now):
+def parse_due(due, time_delta, utc_now):
+    delta = None
     try:
         try:
             d, t = due.split(maxsplit=1)
@@ -168,11 +171,24 @@ def parse_due(due, delta, utc_now):
         if not any((year, month, day, hour, mins, sec)):
             return None, due
 
+    now = utc_now
+
     if delta is None:
-        raise NoDeltaError('delta was None (and due had no TZ info)')
+        if time_delta is None:
+            raise NoDeltaError('delta was None (and due had no TZ info)')
+        if time_delta.time_zone is None:
+            delta = time_delta.delta
+        else:
+            tz = pytz.timezone(time_delta.time_zone)
+            naive = datetime(
+                year or now.year, month or now.month, day or now.day,
+                hour, mins, sec, 0
+            )
+            # This gives us the correct offset with respect to DST
+            delta = tz.utcoffset(naive).total_seconds()
 
     # Work in local time...
-    now = utc_now + timedelta(seconds=delta)
+    now += timedelta(seconds=delta)
     due = datetime(
         year or now.year, month or now.month, day or now.day,
         hour, mins, sec, 0, now.tzinfo
@@ -245,21 +261,15 @@ def spell_number(n, allow_and=True):
     return spelt.lstrip()
 
 
-def spell_due_zoned(due, utc_now, zone=None, prefix=True):
-    if prefix and zone is not None:
-        due_utc = datetime.fromtimestamp(due, tz=pytz.UTC)
-        due = utc_to_local(due_utc, zone)
-        due = due.strftime('%Y-%m-%d %H:%M:%S')
-
-        return f'due at {due}'
-
-    return spell_delay(int(due - utc_now.timestamp()), prefix=prefix)
-
-
-def spell_due(due, utc_now, utc_delta=None, prefix=True):
-    if prefix and utc_delta is not None:
+def spell_due(due, utc_now, time_delta=None, prefix=True):
+    if prefix and time_delta is not None:
         # Looks like doing .utcfromtimestamp "subtracts" the +N local time…?
-        due = datetime.fromtimestamp(due + utc_delta, tz=pytz.UTC)
+        if time_delta.time_zone is None:
+            due = datetime.fromtimestamp(due + time_delta.delta, tz=pytz.UTC)
+        else:
+            due_utc = datetime.fromtimestamp(due, tz=pytz.UTC)
+            due = utc_to_local(due_utc, time_delta.time_zone)
+
         due = due.strftime('%Y-%m-%d %H:%M:%S')
         return f'due at {due}'
 
