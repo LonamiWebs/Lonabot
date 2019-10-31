@@ -276,33 +276,32 @@ def spell_due(due, utc_now, time_delta=None, prefix=True):
     return spell_delay(due - int(utc_now.timestamp()), prefix=prefix)
 
 
+def _plural(amount, what):
+    if amount == 1:
+        return f' {amount} {what}'
+    else:
+        return f' {amount} {what}s'
+
+
 def spell_delay(remaining, prefix=True):
     spelt = 'due in' if prefix else ''
     if remaining < 60:
-        spelt += f' {remaining} second'
-        if remaining != 1:
-            spelt += 's'
+        spelt += _plural(remaining, 'second')
         return spelt.lstrip()
 
     written = False
     if remaining >= 86400:
         days, remaining = divmod(remaining, 86400)
-        spelt += f' {days} day'
+        spelt += _plural(days, 'day')
         written = True
-        if days != 1:
-            spelt += 's'
     if remaining >= 3600:
         hours, remaining = divmod(remaining, 3600)
-        spelt += f' {hours} hour'
+        spelt += _plural(hours, 'hour')
         written = True
-        if hours != 1:
-            spelt += 's'
 
     mins, remaining = divmod(remaining, 60)
     if mins or not written:
-        spelt += f' {mins} minute'
-        if mins != 1:
-            spelt += 's'
+        spelt += _plural(mins, 'minute')
 
     return spelt.lstrip()
 
