@@ -50,7 +50,7 @@ def parse_when(when, time_delta: TimeDelta, utc_now):
 
     delay, text = parse_delay(when)
     if delay:
-        due = int(utc_now.timestamp() + delay)
+        due = int(utc_now.timestamp()) + delay
         return due, text
 
     return None, None
@@ -161,7 +161,7 @@ def parse_due(due, time_delta, utc_now):
             d.day, d.month, d.year, d.hour, d.minute, d.second)
 
         if d.tzinfo:
-            delta = d.tzinfo.utcoffset(utc_now).total_seconds()
+            delta = int(d.tzinfo.utcoffset(utc_now).total_seconds())
 
     except (ValueError, AttributeError):
         date, time, text = _parse_date_parts(due)
@@ -185,7 +185,7 @@ def parse_due(due, time_delta, utc_now):
                 hour, mins, sec, 0
             )
             # This gives us the correct offset with respect to DST
-            delta = tz.utcoffset(naive).total_seconds()
+            delta = int(tz.utcoffset(naive).total_seconds())
 
     # Work in local time...
     now += timedelta(seconds=delta)
@@ -207,7 +207,7 @@ def parse_due(due, time_delta, utc_now):
             due += timedelta(days=1)
 
     # ...but return UTC time
-    return int(due.timestamp() - delta), text
+    return int(due.timestamp()) - delta, text
 
 
 def spell_digit(n):
@@ -273,7 +273,7 @@ def spell_due(due, utc_now, time_delta=None, prefix=True):
         due = due.strftime('%Y-%m-%d %H:%M:%S')
         return f'due at {due}'
 
-    return spell_delay(int(due - utc_now.timestamp()), prefix=prefix)
+    return spell_delay(due - int(utc_now.timestamp()), prefix=prefix)
 
 
 def spell_delay(remaining, prefix=True):
