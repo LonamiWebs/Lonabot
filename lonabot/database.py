@@ -211,7 +211,7 @@ class Database:
         c = self._cursor()
         c.execute('SELECT Delta, TimeZone FROM TimeDelta WHERE UserID = ?', (user_id,))
         delta, time_zone = (c.fetchone() or (None, None))
-        return TimeDelta(delta, time_zone) if delta else None
+        return TimeDelta(delta, time_zone) if delta is not None else None
 
     def pop_reminder(self, reminder_id):
         c = self._cursor()
