@@ -434,7 +434,9 @@ Made with love by @Lonami and hosted by Richard ❤️
             await self.sendMessage(
                 chat_id=chat_id,
                 text='Please specify "all", "next", "bday" or '
-                     'the number shown in /status (no quotes!)'
+                     'the number shown in /status (no quotes!) '
+                     'in the same message as the command, such '
+                     'as /clear all or /clear 2'
             )
             return
 
