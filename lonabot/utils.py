@@ -39,6 +39,7 @@ _UNIT_DELAY_PARSE = re.compile(
 )
 
 _DUE_DATE_YMD = re.compile(r'(?:(\d{4})[/-])?(\d{1,2})[/-](\d{1,2})')
+_DUE_DATE_DMY = re.compile(r'(\d{1,2})[/-](\d{1,2})[/-](\d{4})')
 _DUE_TIME = re.compile(fr'{_F}:{_F}(?::{_F})?')
 
 
@@ -85,6 +86,12 @@ def _parse_due_date(part):
     """
     Parse a part of text as a date, in either DD/MM/YYYY or YYYY/MM/DD format.
     """
+    # Strict DMY
+    m = _DUE_DATE_DMY.match(part)
+    if m:
+        return reversed(m.groups())
+
+    # Partial (Y)MD
     m = _DUE_DATE_YMD.match(part)
     if m:
         return m.groups()
