@@ -151,7 +151,7 @@ def parse_due(due, delta, utc_now):
 
         # See: https://bugs.python.org/issue35829
         # See: https://discuss.python.org/t/parse-z-timezone-suffix-in-datetime/2220
-        d = d.replace('Z', '+01:00')
+        d = d.replace('Z', '+00:00')
         d = datetime.fromisoformat(d)
 
         # Parsing succeeded, so set the correct text now.
