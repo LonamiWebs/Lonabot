@@ -281,6 +281,7 @@ class Database:
                   'WHERE ID = ?',
                   (year, stage, birthday_id))
         c.close()
+        self._save()
         return stage
 
     def has_birthday_stage(self, birthday_id, year, stage):
