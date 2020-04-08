@@ -560,6 +560,12 @@ Made with love by @Lonami and hosted by Richard ❤️
             if fwd:
                 return fwd.id, fwd.username, fwd.first_name
 
+            # Forward privacy is annoying and bot-API naming is silly.
+            # Pretend name is username to not say "they don't have Telegram".
+            fwd_name = update.message.forward_sender_name
+            if fwd_name:
+                return None, fwd_name, fwd_name
+
             for m in update.message.entities:
                 if m.type == 'mention':
                     usr = update.message.text[m.offset:m.offset + m.length]
