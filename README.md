@@ -4,6 +4,7 @@ several [dumbots](https://github.com/Lonami/dumbot) for telegram.
 ## current bots
 * [@lonabot](https://t.me/lonabot) allows you to set reminders.
 * [@textobot](https://t.me/textobot) allows you to alter your texts.
+* [@coinaflipbot](https://t.me/coinaflipbot) allows you ~~coin a flip~~ flip a coin.
 
 ## running
 1. download or `git clone` this repository.
