@@ -1,11 +1,7 @@
-import functools
-import random
 import uuid
 
-from dumbot import Bot
 from .text import get_all
 
-rand64 = functools.partial(random.randrange, -2**63, 2**63)
 seen = {}
 bot = None
 
@@ -19,7 +15,7 @@ async def on_update(update):
                 seen[update.message.chat.id] = 1
                 await bot.sendMessage(
                     chat_id=update.message.chat.id,
-                    text='I only work inline silly. Anyway, @Lonami made '
+                    text='I only work inline silly. Anyway, @LonamiWebs made '
                          'me, and Richard hosts the server so thank him ❤️'
                 )
             elif state == 1:
