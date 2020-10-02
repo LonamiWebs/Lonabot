@@ -351,7 +351,7 @@ Made with love by @Lonami and hosted by Richard ❤️
                 if current_delta.time_zone is not None:
                     msg += f'({current_delta.time_zone}) '
 
-                msg += 'You can change this with commands such as'\
+                msg += 'You can change this with commands such as '\
                     '/tz hh:mm or /tz Europe/Andorra'
                 await self.sendMessage(
                     chat_id=update.message.chat.id,
