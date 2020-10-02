@@ -156,12 +156,12 @@ def parse_due(due, time_delta, utc_now):
         except ValueError:
             d, t = due, ''
 
-        if 'T' not in d:
+        if 'T' not in d and 't' not in d:
             raise ValueError('Not parsing ISO date without T')
 
         # See: https://bugs.python.org/issue35829
         # See: https://discuss.python.org/t/parse-z-timezone-suffix-in-datetime/2220
-        d = d.replace('Z', '+00:00')
+        d = d.replace('Z', '+00:00').replace('z', '+00:00')
         d = datetime.fromisoformat(d)
 
         # Parsing succeeded, so set the correct text now.
