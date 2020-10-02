@@ -232,6 +232,8 @@ You can change your timezone with:
 
 Either by specifying your current time or [your location]({TZ_URL}).
 
+`/tz` without an argument will show your currently configured offset.
+
 Everyone is allowed to use {MAX_REMINDERS} reminders max. No more!
 
 Made with love by @Lonami and hosted by Richard ❤️
@@ -330,14 +332,31 @@ Made with love by @Lonami and hosted by Richard ❤️
 
     @dumbot.command
     async def tz(self, update):
+        sender_id = update.message.from_.id
+        current_delta = self.db.get_time_delta(sender_id)
+
         tz = update.message.text.split(maxsplit=1)
         if len(tz) == 1:
-            await self.sendMessage(
-                chat_id=update.message.chat.id,
-                text='Please specify your current time '
-                     'in the same message as the command, '
-                     'such as /tz hh:mm or /tz Europe/Andorra'
-            )
+            if current_delta is None:
+                await self.sendMessage(
+                    chat_id=update.message.chat.id,
+                    text='Please specify your current time '
+                        'in the same message as the command, '
+                        'such as /tz hh:mm or /tz Europe/Andorra'
+                )
+            else:
+                msg = f"There's a difference of {current_delta.delta} seconds "\
+                    'between you and I :D '
+
+                if current_delta.time_zone is not None:
+                    msg += f'({current_delta.time_zone}) '
+
+                msg += 'You can change this with commands such as'\
+                    '/tz hh:mm or /tz Europe/Andorra'
+                await self.sendMessage(
+                    chat_id=update.message.chat.id,
+                    text=msg
+                )
             return
 
         delta = None
@@ -374,7 +393,7 @@ Made with love by @Lonami and hosted by Richard ❤️
                 else:
                     delta -= 24 * 60 * 60
 
-        self.db.set_time_delta(update.message.from_.id, delta, zone)
+        self.db.set_time_delta(sender_id, delta, zone)
 
         await self.sendMessage(chat_id=update.message.chat.id,
                                text=f"Got it! There's a difference of "
