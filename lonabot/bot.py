@@ -77,6 +77,10 @@ You can set reminders by using:
 `/remind 17:05 Optional text`
 `/remind 17/11/2020 20:00 Optional text`
 `/remind 2020-02-02T20:00:00+02:00 Optional text`
+`/remind later Optional text`
+
+`/remind later` requires you to first configure what `later` is with
+`/later 1y2mo3w4d5h6s`
 '''.strip()
 
 SAY_WHAT = (
@@ -234,6 +238,10 @@ Either by specifying your current time or [your location]({TZ_URL}).
 
 `/tz` without an argument will show your currently configured offset.
 
+You can configure what "later" means to you with:
+`/later 1y2mo3w4d5h6s`
+Where all parts are optional but at least one has to be present.
+
 Everyone is allowed to use {MAX_REMINDERS} reminders max. No more!
 
 Made with love by @Lonami and hosted by Richard ❤️
@@ -262,6 +270,7 @@ Made with love by @Lonami and hosted by Richard ❤️
         chat_id = msg.chat.id
 
         time_delta = self.db.get_time_delta(msg.from_.id)
+        later_delta = self.db.get_later(msg.from_.id)
 
         reply_id = update.message.reply_to_message.message_id or None
 
@@ -283,7 +292,7 @@ Made with love by @Lonami and hosted by Richard ❤️
 
         utc_now = datetime.now(timezone.utc)
         try:
-            due, text = utils.parse_when(when[1], time_delta, utc_now)
+            due, text = utils.parse_when(when[1], time_delta, utc_now, later_delta)
         except utils.NoDeltaError:
             await self.sendMessage(
                 chat_id=chat_id,
@@ -398,6 +407,45 @@ Made with love by @Lonami and hosted by Richard ❤️
         await self.sendMessage(chat_id=update.message.chat.id,
                                text=f"Got it! There's a difference of "
                                     f"{delta} seconds between you and I :D")
+
+    @dumbot.command
+    async def later(self, update):
+        sender_id = update.message.from_.id
+        current_later = self.db.get_later(sender_id)
+        later = update.message.text.split(maxsplit=1)
+
+        if len(later) == 1:
+            if current_later is None:
+                await self.sendMessage(
+                    chat_id=update.message.chat.id,
+                    text='You have no "later" configured, configure it by '
+                        'using the command as such: '
+                        '/later 1y2mo3w4d5h6s'
+                )
+            else:
+                await self.sendMessage(
+                    chat_id=update.message.chat.id,
+                    text='Your current "later" delay is '
+                        f'{current_later} seconds'
+                )
+            return
+
+        delay, _ = utils.parse_delay(later[1])
+
+        if delay is None or delay == 0:
+            await self.sendMessage(
+                chat_id=update.message.chat.id,
+                text='That is not a valid duration string :('
+            )
+            return
+
+        self.db.set_later(sender_id, delay)
+
+        await self.sendMessage(
+            chat_id=update.message.chat.id,
+            text='Got it! Your "later" delay is now set to '
+                f'{delay} seconds <3'
+        )
 
     @dumbot.command
     async def status(self, update):
