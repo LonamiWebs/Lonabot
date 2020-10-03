@@ -63,7 +63,7 @@ def parse_delay(when, later_delta=None):
         return iso
 
     later = when.split(maxsplit=1)
-    if later[0] == 'later' and later_delta is not None:
+    if later[0].upper() == 'LATER' and later_delta is not None:
         return later_delta, later[1].lstrip()
 
     delay = 0.0

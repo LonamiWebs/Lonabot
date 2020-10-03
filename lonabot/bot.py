@@ -79,8 +79,8 @@ You can set reminders by using:
 `/remind 2020-02-02T20:00:00+02:00 Optional text`
 `/remind later Optional text`
 
-`/remind later` requires you to first configure what `later` is with
-`/later 1y2mo3w4d5h6s`
+`/remind later` requires you to first configure what `later` is with e.g.
+`/later 1h30m`
 '''.strip()
 
 SAY_WHAT = (
@@ -238,9 +238,9 @@ Either by specifying your current time or [your location]({TZ_URL}).
 
 `/tz` without an argument will show your currently configured offset.
 
-You can configure what "later" means to you with:
-`/later 1y2mo3w4d5h6s`
-Where all parts are optional but at least one has to be present.
+You can configure what "later" means to you with e.g.:
+`/later 1h30m`
+`/later 2m30s`
 
 Everyone is allowed to use {MAX_REMINDERS} reminders max. No more!
 
@@ -426,7 +426,7 @@ Made with love by @Lonami and hosted by Richard ❤️
                 await self.sendMessage(
                     chat_id=update.message.chat.id,
                     text='Your current "later" delay is '
-                        f'{current_later} seconds'
+                        f'{utils.spell_delay(current_later, False)}'
                 )
             return
 
@@ -444,7 +444,7 @@ Made with love by @Lonami and hosted by Richard ❤️
         await self.sendMessage(
             chat_id=update.message.chat.id,
             text='Got it! Your "later" delay is now set to '
-                f'{delay} seconds <3'
+                f'{utils.spell_delay(delay, False)} <3'
         )
 
     @dumbot.command
