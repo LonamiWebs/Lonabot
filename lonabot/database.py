@@ -6,7 +6,7 @@ import pytz
 
 from dataclasses import dataclass
 
-DB_VERSION = 7
+DB_VERSION = 8
 
 
 Reminder = collections.namedtuple(
@@ -48,6 +48,10 @@ class Database:
                       'UserID INTEGER PRIMARY KEY,'
                       'Delta INTEGER NOT NULL,'
                       'TimeZone TEXT NULL)')
+
+            c.execute('CREATE TABLE Later('
+                      'UserID INTEGER PRIMARY KEY,'
+                      'Delta INTEGER NOT NULL)')
 
             c.execute('CREATE TABLE Reminders('
                       'ID INTEGER PRIMARY KEY AUTOINCREMENT,'
@@ -131,6 +135,11 @@ class Database:
             old = 6
         if old == 6:
             c.execute('ALTER TABLE TimeDelta ADD TimeZone TEXT NULL')
+            old = 7
+        if old == 7:
+            c.execute('CREATE TABLE Later('
+                      'UserID INTEGER PRIMARY KEY,'
+                      'Delta INTEGER NOT NULL)')
 
         c.close()
 
@@ -212,6 +221,22 @@ class Database:
         c.execute('SELECT Delta, TimeZone FROM TimeDelta WHERE UserID = ?', (user_id,))
         delta, time_zone = (c.fetchone() or (None, None))
         return TimeDelta(delta, time_zone) if delta is not None else None
+
+    def set_later(self, user_id, delta):
+        c = self._cursor()
+        c.execute(
+            'INSERT OR REPLACE INTO Later '
+            '(UserID, Delta) VALUES (?, ?)',
+            (user_id, delta)
+        )
+        c.close()
+        self._save()
+
+    def get_later(self, user_id):
+        c = self._cursor()
+        c.execute('SELECT Delta FROM Later WHERE UserID = ?', (user_id,))
+        result = c.fetchone()
+        return result[0] if result is not None else None
 
     def pop_reminder(self, reminder_id):
         c = self._cursor()

@@ -43,13 +43,13 @@ _DUE_DATE_DMY = re.compile(r'(\d{1,2})[/-](\d{1,2})[/-](\d{4})')
 _DUE_TIME = re.compile(fr'{_F}:{_F}(?::{_F})?')
 
 
-def parse_when(when, time_delta: TimeDelta, utc_now):
+def parse_when(when, time_delta: TimeDelta, utc_now, later_delta=None):
     # Returns `due` for either `delay` or `due`.
     due, text = parse_due(when, time_delta, utc_now)
     if due:
         return due, text
 
-    delay, text = parse_delay(when)
+    delay, text = parse_delay(when, later_delta)
     if delay:
         due = int(utc_now.timestamp()) + delay
         return due, text
@@ -57,10 +57,14 @@ def parse_when(when, time_delta: TimeDelta, utc_now):
     return None, None
 
 
-def parse_delay(when):
+def parse_delay(when, later_delta=None):
     iso = _parse_delay_iso(when)
     if iso:
         return iso
+
+    later = when.split(maxsplit=1)
+    if later[0].casefold() == 'later' and later_delta is not None:
+        return later_delta, later[1].lstrip()
 
     delay = 0.0
     while True:
