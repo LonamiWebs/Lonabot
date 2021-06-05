@@ -73,6 +73,10 @@ def circle(text):
     return ''.join(work(text))
 
 
+def clap(text):
+    return ' 👏 '.join(text.split())
+
+
 def enumerate_modify(text):
     """ unicod.es
     mathbold    = r'''𝐀𝐁𝐂𝐃𝐄𝐅𝐆𝐇𝐈𝐉𝐊𝐋𝐌𝐍𝐎𝐏𝐐𝐑𝐒𝐓𝐔𝐕𝐖𝐗𝐘𝐙𝐚𝐛𝐜𝐝𝐞𝐟𝐚𝐛𝐜𝐝𝐞𝐟𝐠𝐡𝐢𝐣𝐤𝐥𝐦𝐧𝐨𝐩𝐪𝐫𝐬𝐭𝐮𝐯𝐰𝐱𝐲𝐹'''
@@ -114,6 +118,7 @@ def get_all(text):
     yield 'Strikethrough', strike(text)
     yield 'ａｅｓｔｈｅｔｈｉｃｓ．', aesthethics(text)
     yield 'Ⓒⓘⓡⓒⓛⓔⓓ', circle(text)
+    yield '👏👏👏', clap(text)
     yield 'Hmuan Mnid Pweor', scramble(text)  # youtu.be/GWedYV-D_tg
     yield '.desreveR', rev(text)
     for name, result in zip(['Bold', 'Bold Italics', 'Script', 'Gothic',
