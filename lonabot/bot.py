@@ -588,11 +588,9 @@ Made with love by @Lonami and hosted by Richard ❤️
                 utc_now = datetime.now(timezone.utc)
                 time_delta = self.db.get_time_delta(from_id)
                 spelt = utils.spell_due(reminder.due, utc_now, time_delta)
-                # Figure out how to make proper message links
-                reply_text = f"(reply to https://t.me/c/{chat_id}/{reminder.reply_to})\n" if reminder.reply_to else ''
                 text = f'''
 **Reminder {which + 1}:**
-{reminder.text}
+{reminder.text or '(no text)'}
 
 __{spelt}__
 '''.strip()
