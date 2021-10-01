@@ -225,8 +225,8 @@ Hi! I'm {self._me.first_name.title()} and running in "reminder" mode.
 You can list previous reminders with:
 `/status`
 
-You can inspect a specific reminder with:
-`/inspect 2` for the 2 in `/status`
+You can show a specific reminder with:
+`/show 2` for the 2 in `/status`
 
 You can clear previous reminders with:
 `/clear next` for the closest one
@@ -551,7 +551,7 @@ Made with love by @Lonami and hosted by Richard ❤️
         await self.sendMessage(chat_id=chat_id, text=text)
 
     @dumbot.command
-    async def inspect(self, update):
+    async def show(self, update):
         chat_id = update.message.chat.id
         from_id = update.message.from_.id
         which = update.message.text.split(maxsplit=1)
@@ -559,8 +559,8 @@ Made with love by @Lonami and hosted by Richard ❤️
         if len(which) == 1:
             await self.sendMessage(
                 chat_id=chat_id,
-                text='Please specify the reminder to inspect using the number '
-                     'shown in /status (no quotes!), such as /inspect 2'
+                text='Please specify the reminder to show using the number '
+                     'shown in /status (no quotes!), such as /show 2'
             )
             return
 
@@ -571,7 +571,7 @@ Made with love by @Lonami and hosted by Richard ❤️
             shrug = b'\xf0\x9f\xa4\xb7\xe2\x80\x8d\xe2\x99\x80\xef\xb8\x8f'
             await self.sendMessage(
                 chat_id=chat_id,
-                text=f'Nothing to inspect {str(shrug, encoding="utf-8")}'
+                text=f'Nothing to show {str(shrug, encoding="utf-8")}'
             )
             return
 
