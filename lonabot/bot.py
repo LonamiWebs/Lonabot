@@ -550,7 +550,6 @@ Made with love by @Lonami and hosted by Richard ❤️
 
         await self.sendMessage(chat_id=chat_id, text=text)
 
-
     @dumbot.command
     async def inspect(self, update):
         chat_id = update.message.chat.id
