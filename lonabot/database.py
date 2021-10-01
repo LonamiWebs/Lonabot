@@ -188,6 +188,24 @@ class Database:
         self._save()
         return row is not None
 
+    def get_nth_reminder(self, chat_id, from_id, n):
+        c = self._cursor()
+        c.execute('SELECT * FROM Reminders WHERE ChatID = ? AND '
+                  'CreatorID = ? ORDER BY Due ASC', (chat_id, from_id))
+        row = c.fetchone()
+
+        while row and n:
+            n -= 1
+            row = c.fetchone()
+
+        result = None
+        if row:
+            result = Reminder(*row)
+
+        c.close()
+
+        return result
+
     def iter_reminders(self, chat_id=None, from_id=None):
         c = self._cursor()
         if chat_id:
