@@ -225,6 +225,9 @@ Hi! I'm {self._me.first_name.title()} and running in "reminder" mode.
 You can list previous reminders with:
 `/status`
 
+You can inspect a specific reminder with:
+`/inspect 2` for the 2 in `/status`
+
 You can clear previous reminders with:
 `/clear next` for the closest one
 `/clear all` for all in the chat
@@ -546,6 +549,61 @@ Made with love by @Lonami and hosted by Richard ❤️
                 text = 'Er, that was not a valid number?'
 
         await self.sendMessage(chat_id=chat_id, text=text)
+
+
+    @dumbot.command
+    async def inspect(self, update):
+        chat_id = update.message.chat.id
+        from_id = update.message.from_.id
+        which = update.message.text.split(maxsplit=1)
+
+        if len(which) == 1:
+            await self.sendMessage(
+                chat_id=chat_id,
+                text='Please specify the reminder to inspect using the number '
+                     'shown in /status (no quotes!), such as /inspect 2'
+            )
+            return
+
+        which = which[1].lower()
+
+        have = self.db.get_reminder_count(from_id)
+        if not have:
+            shrug = b'\xf0\x9f\xa4\xb7\xe2\x80\x8d\xe2\x99\x80\xef\xb8\x8f'
+            await self.sendMessage(
+                chat_id=chat_id,
+                text=f'Nothing to inspect {str(shrug, encoding="utf-8")}'
+            )
+            return
+
+        text = 'Beep boop, logic error - bug my owner to fix me'
+        try:
+            which = int(which) - 1
+            if which < 0:
+                raise ValueError('Out of bounds')
+
+            reminder = self.db.get_nth_reminder(chat_id, from_id, which)
+
+            if reminder:
+                utc_now = datetime.now(timezone.utc)
+                time_delta = self.db.get_time_delta(from_id)
+                spelt = utils.spell_due(reminder.due, utc_now, time_delta)
+                # Figure out how to make proper message links
+                reply_text = f"(reply to https://t.me/c/{chat_id}/{reminder.reply_to})\n" if reminder.reply_to else ''
+                text = f'''
+**Reminder {which + 1}:**
+{reminder.text}
+
+__{spelt}__
+'''.strip()
+            else:
+                text = 'That reminder does not exist :('
+
+        except ValueError:
+            text = 'Er, that was not a valid number?'
+
+        await self.sendMessage(chat_id=chat_id, text=text, parse_mode='markdown')
+
 
     # Birthdays
 
