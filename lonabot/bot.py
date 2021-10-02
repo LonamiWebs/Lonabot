@@ -585,13 +585,19 @@ Made with love by @Lonami and hosted by Richard ❤️
 
             if reminder:
                 utc_now = datetime.now(timezone.utc)
+                title = f'Reminder {which + 1}'
                 time_delta = self.db.get_time_delta(from_id)
+                reply_link = None
+                if reminder.reply_to is not None:
+                    reply_link = utils.get_message_link(chat_id, reminder.reply_to)
+                if reply_link:
+                    title = f'<a href="{reply_link}">Reminder {which + 1}</a>'
                 spelt = utils.spell_due(reminder.due, utc_now, time_delta)
                 text = f'''
-**Reminder {which + 1}:**
+<b>{title}:</b>
 {reminder.text or '(no text)'}
 
-__{spelt}__
+<i>{spelt}</i>
 '''.strip()
             else:
                 text = 'That reminder does not exist :('
@@ -599,7 +605,7 @@ __{spelt}__
         except ValueError:
             text = 'Er, that was not a valid number?'
 
-        await self.sendMessage(chat_id=chat_id, text=text, parse_mode='markdown')
+        await self.sendMessage(chat_id=chat_id, text=text, parse_mode='html')
 
 
     # Birthdays

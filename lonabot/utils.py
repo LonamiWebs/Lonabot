@@ -395,6 +395,19 @@ def split_message(message, known=(
 
     return text, None, None
 
+
+def get_message_link(chat_id, message_id):
+    if chat_id >= 0:
+        return None
+
+    chat_id = -chat_id
+    if chat_id > 1000000000000:
+        chat_id -= 1000000000000
+        return f"https://t.me/c/{chat_id}/{message_id}"
+
+    return None
+
+
 def utc_to_local(utc, zone):
     tz = pytz.timezone(zone)
 
