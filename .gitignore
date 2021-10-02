@@ -5,3 +5,6 @@
 __pycache__/
 *.py[cod]
 *$py.class
+
+# Poetry build output
+dist/

@@ -1,0 +1,29 @@
+[[package]]
+name = "dumbot"
+version = "1.5.3"
+description = "dumb async telegram bot for python 3"
+category = "main"
+optional = false
+python-versions = "*"
+
+[[package]]
+name = "pytz"
+version = "2021.3"
+description = "World timezone definitions, modern and historical"
+category = "main"
+optional = false
+python-versions = "*"
+
+[metadata]
+lock-version = "1.1"
+python-versions = "^3.7"
+content-hash = "ebd72ec45c0bb538de54cbfa2711e3decd3d5e6e6a3c2ea816acd39cc9c56507"
+
+[metadata.files]
+dumbot = [
+    {file = "dumbot-1.5.3.tar.gz", hash = "sha256:c43466e4c26f68959dede7674a7d03c5e99312d9155f297a6601d342c8813c1c"},
+]
+pytz = [
+    {file = "pytz-2021.3-py2.py3-none-any.whl", hash = "sha256:3672058bc3453457b622aab7a1c3bfd5ab0bdae451512f6cf25f64ed37f5b87c"},
+    {file = "pytz-2021.3.tar.gz", hash = "sha256:acad2d8b20a1af07d4e4c9d2e9285c5ed9104354062f275f3fcd88dcef4f1326"},
+]
