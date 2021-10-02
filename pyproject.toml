@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "lonabots"
+version = "0.1.0"
+description = "Several dumbots for telegram."
+authors = ["Lonami <totufals@hotmail.com>"]
+license = "MIT"
+packages = [
+  { include = "coinaflip" },
+  { include = "lonabot" },
+  { include = "textobot" }
+]
+
+[tool.poetry.dependencies]
+python = "^3.7"
+dumbot = "^1.5.3"
+pytz = "~2021.3"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
