@@ -176,8 +176,8 @@ class Lonabot(dumbot.Bot):
             schedreminder.SchedReminder(r.id, r.due)
             for r in self.db.iter_reminders()
         )
-        self._check_sched_task = self._loop.create_task(self._check_sched())
-        self._check_bday_task = self._loop.create_task(self._check_bday())
+        self._check_sched_task = asyncio.create_task(self._check_sched())
+        self._check_bday_task = asyncio.create_task(self._check_bday())
 
     async def disconnect(self):
         await super().disconnect()
@@ -811,7 +811,7 @@ Made with love by @Lonami and hosted by Richard ❤️
                 self._sched_reminders.pop()
                 reminder = self.db.pop_reminder(upcoming.id)
                 if reminder:
-                    self._loop.create_task(self._remind(reminder))
+                    asyncio.create_task(self._remind(reminder))
 
             await asyncio.sleep(1)
 
