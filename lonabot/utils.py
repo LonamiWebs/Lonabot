@@ -413,3 +413,16 @@ def utc_to_local(utc, zone):
 
     # CAUTION: `astimezone` ONLY works if `utc` is NOT a naive datetime!
     return utc.astimezone(tz)
+
+
+def spell_ordinal(number):
+    a = number % 10
+    b = number % 100  # no idea what to call these but I'm sure they have a proper name
+    if a == 1 and b != 11:
+        return f'{n}st'
+    elif a == 2 and b != 12:
+        return f'{n}nd'
+    elif a == 3 and b != 13:
+        return f'{n}rd'
+    else:
+        return f'{n}th'

@@ -851,7 +851,7 @@ Made with love by @Lonami and hosted by Richard ❤️
         if today:
             text = f"Today it's {mention}{postfix} birthday! 🎉"
         else:
-            text = f"Tomorrow it's {mention}{postfix} birthday. "\
+            text = f"Tomorrow the {utils.spell_ordinal(bday.day)} is {mention}{postfix} birthday. "\
                    f"Did you get them a present yet 🎁?"
 
         await self.sendMessage(
