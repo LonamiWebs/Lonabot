@@ -419,10 +419,10 @@ def spell_ordinal(number):
     a = number % 10
     b = number % 100  # no idea what to call these but I'm sure they have a proper name
     if a == 1 and b != 11:
-        return f'{n}st'
+        return f'{number}st'
     elif a == 2 and b != 12:
-        return f'{n}nd'
+        return f'{number}nd'
     elif a == 3 and b != 13:
-        return f'{n}rd'
+        return f'{number}rd'
     else:
-        return f'{n}th'
+        return f'{number}th'
