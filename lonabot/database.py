@@ -349,6 +349,9 @@ class Database:
 
     def delete_birthday(self, birthday_id):
         c = self._cursor()
+        c.execute('SELECT * FROM Birthdays WHERE ID = ?', (birthday_id,))
+        row = c.fetchone()
         c.execute('DELETE FROM Birthdays WHERE ID = ?', (birthday_id,))
         c.close()
         self._save()
+        return Birthday(*row)

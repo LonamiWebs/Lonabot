@@ -1,6 +1,7 @@
 import calendar
 import itertools
 import re
+import html
 from datetime import datetime, timedelta, timezone
 
 import pytz
@@ -426,3 +427,18 @@ def spell_ordinal(number):
         return f'{number}rd'
     else:
         return f'{number}th'
+
+
+def format_bday_person(bday):
+    name = html.escape(bday.person_name)
+    if name.lower().endswith('s'):
+        postfix = "'"
+    else:
+        postfix = "'s"
+
+    if bday.person_id:
+        mention = f'<a href="tg://user?id={bday.person_id}">{name}</a>'
+    else:
+        mention = name
+
+    return mention, postfix

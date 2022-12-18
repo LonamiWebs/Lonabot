@@ -748,21 +748,26 @@ Made with love by @Lonami and hosted by Richard ❤️
 
     @dumbot.inline_button(r'birthday/clear/(\d+)')
     async def _delete_bday(self, update, match):
-        self.db.delete_birthday(int(match.group(1)))
+        bday = self.db.delete_birthday(int(match.group(1)))
+        mention, postfix = utils.format_bday_person(bday)
+        deleted_text = (
+            f'I have deleted {mention}{postfix} birthday which was on the '
+            f'{utils.spell_ordinal(bday.day)} of {calendar.month_name[bday.month]}!'
+        )
 
         message = update.callback_query.message
         count = self.db.get_birthday_count(message.chat.id)
         if not count:
             await self.sendMessage(
                 chat_id=message.chat.id,
-                text='I have deleted all your saved birthdays now :)'
+                text=f'{deleted_text} With that, all your saved birthdays are gone :)'
             )
             return
 
         await self.editMessageText(
             chat_id=message.chat.id,
             message_id=message.message_id,
-            text='Gone! Any other to remove?',
+            text=f'{deleted_text} Any other to remove?',
             reply_markup=birthdays.build_clear_markup(
                 self.db.iter_birthdays(message.chat.id))
         )
@@ -837,16 +842,7 @@ Made with love by @Lonami and hosted by Richard ❤️
             await asyncio.sleep(6 * 60 * 60)
 
     async def _remind_bday(self, bday, today):
-        name = html.escape(bday.person_name)
-        if name.lower().endswith('s'):
-            postfix = "'"
-        else:
-            postfix = "'s"
-
-        if bday.person_id:
-            mention = f'<a href="tg://user?id={bday.person_id}">{name}</a>'
-        else:
-            mention = name
+        mention, postfix = utils.format_bday_person(bday)
 
         if today:
             text = f"Today it's {mention}{postfix} birthday! 🎉"
